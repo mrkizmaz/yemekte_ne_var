@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
 import { Platform } from 'react-native'
+import { getCurrentLang, msg } from './i18n/translations'
 import type { Meal } from './types'
 
 export type AuthUser = {
@@ -75,16 +76,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       signal: AbortSignal.timeout(8000),
       headers: {
         'Content-Type': 'application/json',
+        'X-Lang': getCurrentLang(),
+        'Accept-Language': getCurrentLang(),
         ...(memoryToken ? { Authorization: `Bearer ${memoryToken}` } : {}),
         ...(options.headers || {}),
       },
     })
   } catch {
-    throw new Error('Bağlantı yok. API adresini ve sunucuyu kontrol et.')
+    throw new Error(msg('connectionError'))
   }
   const body = (await res.json().catch(() => ({}))) as T & { error?: string; token?: string }
   if (!res.ok) {
-    throw new Error(body.error || 'İstek başarısız.')
+    throw new Error(body.error || msg('requestFailed'))
   }
   rememberToken(body.token)
   return body

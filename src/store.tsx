@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { api, clearToken, hydrateToken, type Catalog } from './api'
+import { msg } from './i18n/translations'
 import type { AppState, Comment, Meal, MealSlot, SuggestionVote } from './types'
 
 const emptyCatalog: Catalog = {
@@ -98,7 +99,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         applySession(await api.register(user, password))
         return null
       } catch (err) {
-        return err instanceof Error ? err.message : 'Kayıt başarısız.'
+        return err instanceof Error ? err.message : msg('registerFailed')
       }
     },
     [applySession],
@@ -110,7 +111,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         applySession(await api.login(user, password))
         return null
       } catch (err) {
-        return err instanceof Error ? err.message : 'Giriş başarısız.'
+        return err instanceof Error ? err.message : msg('loginFailed')
       }
     },
     [applySession],
@@ -127,7 +128,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await api.deleteAccount()
       clearToken()
     } catch (err) {
-      return err instanceof Error ? err.message : 'Hesap silinemedi.'
+      return err instanceof Error ? err.message : msg('accountDeleteFailed')
     }
     setUsername('')
     setState({ userName: '', isAdmin: false, ...emptyCatalog })

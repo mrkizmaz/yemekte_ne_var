@@ -29,7 +29,9 @@ module.exports = async function handler(req, res) {
     if (!res.headersSent) {
       res.statusCode = 500
       res.setHeader('Content-Type', 'application/json')
-      res.end(JSON.stringify({ error: err?.message || 'Sunucu hatası' }))
+      const raw = String(req.headers['x-lang'] || req.headers['accept-language'] || 'tr')
+      const de = raw.toLowerCase().startsWith('de')
+      res.end(JSON.stringify({ error: err?.message || (de ? 'Serverfehler.' : 'Sunucu hatası.') }))
     }
   }
 }

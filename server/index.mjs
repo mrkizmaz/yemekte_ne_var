@@ -16,6 +16,7 @@ import {
   saveDb,
 } from './db.mjs'
 import { isoDate, isPastDate, weekStart } from './dates.mjs'
+import { err } from './i18n.mjs'
 
 const PORT = Number(process.env.PORT || 3001)
 const JWT_SECRET = process.env.JWT_SECRET || 'ne-var-dev-secret-change-me'
@@ -28,13 +29,13 @@ function catalog(db, user) {
   return publicData(db, user?.role === 'admin')
 }
 
-function assertCanInteract(res, meal, user) {
+function assertCanInteract(req, res, meal) {
   if (!meal) {
-    res.status(404).json({ error: 'Yemek bulunamadı.' })
+    res.status(404).json({ error: err(req, 'mealNotFound') })
     return false
   }
   if (isPastDate(meal.date)) {
-    res.status(403).json({ error: 'Geçmiş menü yalnızca görüntülenir.' })
+    res.status(403).json({ error: err(req, 'pastMenu') })
     return false
   }
   return true
@@ -49,7 +50,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', origin)
     res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.setHeader('Vary', 'Origin')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Lang, Accept-Language')
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
   }
   if (req.method === 'OPTIONS') {
@@ -111,7 +112,7 @@ function readUser(req) {
 function requireAuth(req, res, next) {
   const user = readUser(req)
   if (!user) {
-    res.status(401).json({ error: 'Giriş yapman gerekiyor.' })
+    res.status(401).json({ error: err(req, 'needLogin') })
     return
   }
   req.user = user
@@ -121,7 +122,7 @@ function requireAuth(req, res, next) {
 function requireAdmin(req, res, next) {
   requireAuth(req, res, () => {
     if (req.user.role !== 'admin') {
-      res.status(403).json({ error: 'Bu işlem yalnızca yönetici için.' })
+      res.status(403).json({ error: err(req, 'adminOnly') })
       return
     }
     next()
@@ -147,21 +148,21 @@ app.post('/api/register', async (req, res) => {
   const password = String(req.body?.password || '')
 
   if (username.length < 3) {
-    res.status(400).json({ error: 'Kullanıcı adı en az 3 karakter olmalı.' })
+    res.status(400).json({ error: err(req, 'usernameShort') })
     return
   }
   if (!validPassword(password)) {
-    res.status(400).json({ error: 'Şifre en az 6 karakter olmalı.' })
+    res.status(400).json({ error: err(req, 'passwordShort') })
     return
   }
   if (username === ADMIN_USERNAME) {
-    res.status(400).json({ error: 'Bu kullanıcı adı alınamaz.' })
+    res.status(400).json({ error: err(req, 'usernameReserved') })
     return
   }
 
   const db = loadDb()
   if (db.users.some((u) => u.username === username)) {
-    res.status(409).json({ error: 'Bu kullanıcı adı dolu.' })
+    res.status(409).json({ error: err(req, 'usernameTaken') })
     return
   }
 
@@ -186,7 +187,7 @@ app.post('/api/login', async (req, res) => {
   const db = loadDb()
   const user = db.users.find((u) => u.username === username)
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    res.status(401).json({ error: 'Kullanıcı adı veya şifre hatalı.' })
+    res.status(401).json({ error: err(req, 'badCredentials') })
     return
   }
 
@@ -202,7 +203,7 @@ app.post('/api/logout', (_req, res) => {
 
 app.post('/api/delete-account', requireAuth, (req, res) => {
   if (req.user.role === 'admin' || req.user.username === ADMIN_USERNAME) {
-    res.status(403).json({ error: 'Yönetici hesabı silinemez.' })
+    res.status(403).json({ error: err(req, 'adminUndeletable') })
     return
   }
   const db = loadDb()
@@ -219,7 +220,7 @@ app.post('/api/delete-account', requireAuth, (req, res) => {
 
 app.delete('/api/me', requireAuth, (req, res) => {
   if (req.user.role === 'admin' || req.user.username === ADMIN_USERNAME) {
-    res.status(403).json({ error: 'Yönetici hesabı silinemez.' })
+    res.status(403).json({ error: err(req, 'adminUndeletable') })
     return
   }
   const db = loadDb()
@@ -242,13 +243,13 @@ app.get('/api/me', requireAuth, (req, res) => {
 app.patch('/api/me', requireAuth, (req, res) => {
   const displayName = String(req.body?.displayName || '').trim()
   if (displayName.length < 2) {
-    res.status(400).json({ error: 'Görünen ad en az 2 karakter olmalı.' })
+    res.status(400).json({ error: err(req, 'displayNameShort') })
     return
   }
   const db = loadDb()
   const user = db.users.find((u) => u.id === req.user.id)
   if (!user) {
-    res.status(404).json({ error: 'Kullanıcı bulunamadı.' })
+    res.status(404).json({ error: err(req, 'userNotFound') })
     return
   }
   user.displayName = displayName
@@ -269,7 +270,7 @@ app.post('/api/meals', requireAdmin, (req, res) => {
     recipe: String(req.body.recipe || '').trim(),
   }
   if (!meal.name || !['kahvalti', 'ogle', 'aksam'].includes(meal.slot)) {
-    res.status(400).json({ error: 'Yemek adı ve öğün gerekli.' })
+    res.status(400).json({ error: err(req, 'mealRequired') })
     return
   }
   db.meals.unshift(meal)
@@ -282,7 +283,7 @@ app.post('/api/meal-update', requireAdmin, (req, res) => {
   const db = loadDb()
   const idx = db.meals.findIndex((m) => m.id === id)
   if (idx < 0) {
-    res.status(404).json({ error: 'Yemek bulunamadı.' })
+    res.status(404).json({ error: err(req, 'mealNotFound') })
     return
   }
   db.meals[idx] = {
@@ -304,7 +305,7 @@ app.put('/api/meals/:id', requireAdmin, (req, res) => {
   const db = loadDb()
   const idx = db.meals.findIndex((m) => m.id === req.params.id)
   if (idx < 0) {
-    res.status(404).json({ error: 'Yemek bulunamadı.' })
+    res.status(404).json({ error: err(req, 'mealNotFound') })
     return
   }
   db.meals[idx] = {
@@ -346,12 +347,12 @@ app.delete('/api/meals/:id', requireAdmin, (req, res) => {
 function applyMealVote(req, res, mealId) {
   const value = req.body?.value
   if (value !== 'like' && value !== 'dislike') {
-    res.status(400).json({ error: 'Oy geçersiz.' })
+    res.status(400).json({ error: err(req, 'badVote') })
     return
   }
   const db = loadDb()
   const meal = db.meals.find((m) => m.id === mealId)
-  if (!assertCanInteract(res, meal, req.user)) return
+  if (!assertCanInteract(req, res, meal)) return
   if (!Array.isArray(db.mealVotes)) db.mealVotes = []
   const who = req.user.username
   const existing = db.mealVotes.find((v) => v.mealId === meal.id && v.userName === who)
@@ -378,12 +379,12 @@ app.post('/api/ratings', requireAuth, (req, res) => {
   const stars = Number(req.body.stars)
   const mealId = String(req.body.mealId || '')
   if (!mealId || stars < 1 || stars > 5) {
-    res.status(400).json({ error: 'Geçerli bir puan seç.' })
+    res.status(400).json({ error: err(req, 'badRating') })
     return
   }
   const db = loadDb()
   const meal = db.meals.find((m) => m.id === mealId)
-  if (!assertCanInteract(res, meal, req.user)) return
+  if (!assertCanInteract(req, res, meal)) return
   const userName = req.user.username
   const existing = db.ratings.find((r) => r.mealId === mealId && r.userName === userName)
   if (existing) existing.stars = stars
@@ -396,12 +397,12 @@ app.post('/api/comments', requireAuth, (req, res) => {
   const text = String(req.body.text || '').trim()
   const mealId = String(req.body.mealId || '')
   if (!text || !mealId) {
-    res.status(400).json({ error: 'Yorum boş olamaz.' })
+    res.status(400).json({ error: err(req, 'emptyComment') })
     return
   }
   const db = loadDb()
   const meal = db.meals.find((m) => m.id === mealId)
-  if (!assertCanInteract(res, meal, req.user)) return
+  if (!assertCanInteract(req, res, meal)) return
   db.comments.unshift({
     id: createId(),
     mealId,
@@ -417,7 +418,7 @@ app.post('/api/suggestions', requireAuth, (req, res) => {
   const text = String(req.body.text || '').trim()
   const slot = req.body.slot
   if (!text || !['kahvalti', 'ogle', 'aksam'].includes(slot)) {
-    res.status(400).json({ error: 'Öğün ve öneri gerekli.' })
+    res.status(400).json({ error: err(req, 'suggestionRequired') })
     return
   }
   const db = loadDb()
@@ -437,13 +438,13 @@ app.post('/api/suggestions', requireAuth, (req, res) => {
 function applySuggestionVote(req, res, suggestionId) {
   const value = req.body?.value
   if (value !== 'like' && value !== 'dislike') {
-    res.status(400).json({ error: 'Beğeni geçersiz.' })
+    res.status(400).json({ error: err(req, 'badLike') })
     return
   }
   const db = loadDb()
   const item = db.suggestions.find((s) => s.id === suggestionId)
   if (!item) {
-    res.status(404).json({ error: 'Öneri bulunamadı.' })
+    res.status(404).json({ error: err(req, 'suggestionNotFound') })
     return
   }
   if (!item.votes || typeof item.votes !== 'object') item.votes = {}
@@ -466,7 +467,7 @@ app.post('/api/suggestion-mark', requireAdmin, (req, res) => {
   const db = loadDb()
   const item = db.suggestions.find((s) => s.id === String(req.body?.id || ''))
   if (!item) {
-    res.status(404).json({ error: 'Öneri bulunamadı.' })
+    res.status(404).json({ error: err(req, 'suggestionNotFound') })
     return
   }
   item.status = 'incelendi'
@@ -478,7 +479,7 @@ app.patch('/api/suggestions/:id', requireAdmin, (req, res) => {
   const db = loadDb()
   const item = db.suggestions.find((s) => s.id === req.params.id)
   if (!item) {
-    res.status(404).json({ error: 'Öneri bulunamadı.' })
+    res.status(404).json({ error: err(req, 'suggestionNotFound') })
     return
   }
   item.status = 'incelendi'

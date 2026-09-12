@@ -1,6 +1,8 @@
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { BackHandler, ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { LanguageProvider, useI18n } from './i18n'
+import { msg } from './i18n/translations'
 import { StoreProvider, useStore } from './store'
 import type { Tab } from './types'
 import type { DayView } from './dates'
@@ -14,7 +16,7 @@ import {
   Suggest,
   Welcome,
 } from './screens'
-import { Hit, styles as ui } from './ui'
+import { Hit, LanguageSwitcher, styles as ui } from './ui'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -27,8 +29,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
     if (this.state.failed) {
       return (
         <View style={[ui.screen, ui.screenPad, { justifyContent: 'center' }]}>
-          <Text style={ui.brand}>Bir şey ters gitti</Text>
-          <Text style={ui.muted}>Uygulamayı kapatıp tekrar açmayı dene.</Text>
+          <Text style={ui.brand}>{msg('errorTitle')}</Text>
+          <Text style={ui.muted}>{msg('errorBody')}</Text>
         </View>
       )
     }
@@ -37,6 +39,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
 }
 
 function AppShell() {
+  const { t } = useI18n()
   const { userName, isAdmin, ready } = useStore()
   const insets = useSafeAreaInsets()
   const [tab, setTab] = useState<Tab>('bugun')
@@ -71,23 +74,23 @@ function AppShell() {
   const tabs = useMemo(
     () =>
       [
-        { id: 'bugun' as const, label: 'Bugün', ico: '🍽️' },
-        { id: 'oneriler' as const, label: 'Öneriler', ico: '✨' },
-        { id: 'admin' as const, label: 'Menü', ico: '📅' },
-        { id: 'adminOneriler' as const, label: 'Öneriler', ico: '✨' },
-        { id: 'profil' as const, label: 'Profil', ico: '👤' },
-      ].filter((t) => {
-        if (t.id === 'admin' || t.id === 'adminOneriler') return isAdmin
-        if (t.id === 'oneriler') return !isAdmin
+        { id: 'bugun' as const, label: t('today'), ico: '🍽️' },
+        { id: 'oneriler' as const, label: t('suggestions'), ico: '✨' },
+        { id: 'admin' as const, label: t('menu'), ico: '📅' },
+        { id: 'adminOneriler' as const, label: t('suggestions'), ico: '✨' },
+        { id: 'profil' as const, label: t('profile'), ico: '👤' },
+      ].filter((item) => {
+        if (item.id === 'admin' || item.id === 'adminOneriler') return isAdmin
+        if (item.id === 'oneriler') return !isAdmin
         return true
       }),
-    [isAdmin],
+    [isAdmin, t],
   )
 
   if (!ready) {
     return (
       <View style={[ui.screen, { justifyContent: 'center', paddingTop: insets.top }]}>
-        <Text style={ui.empty}>Yükleniyor...</Text>
+        <Text style={ui.empty}>{t('loading')}</Text>
       </View>
     )
   }
@@ -96,12 +99,14 @@ function AppShell() {
     return (
       <View style={[ui.screen, { paddingTop: insets.top }]}>
         <Welcome />
+        <LanguageSwitcher top={8} right={12} />
       </View>
     )
   }
 
   return (
     <View style={ui.screen}>
+      <LanguageSwitcher top={insets.top + 8} right={14} />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={[
@@ -159,9 +164,11 @@ function PressNav({
 export default function AppRoot() {
   return (
     <ErrorBoundary>
-      <StoreProvider>
-        <AppShell />
-      </StoreProvider>
+      <LanguageProvider>
+        <StoreProvider>
+          <AppShell />
+        </StoreProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   )
 }

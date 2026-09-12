@@ -10,6 +10,7 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native'
+import { useI18n, slotLabel } from './i18n'
 import { SLOTS, type MealSlot } from './types'
 import { colors } from './theme'
 
@@ -19,12 +20,14 @@ export function Hit({
   style,
   children,
   label,
+  quiet,
 }: {
   onPress: () => void
   disabled?: boolean
   style?: StyleProp<ViewStyle>
   children: ReactNode
   label?: string
+  quiet?: boolean
 }) {
   const run = () => {
     if (!disabled) onPress()
@@ -37,6 +40,11 @@ export function Hit({
         type: 'button',
         disabled,
         onClick: run,
+        onMouseDown: quiet
+          ? (e: { preventDefault: () => void }) => {
+              e.preventDefault()
+            }
+          : undefined,
         'aria-label': label,
         style: {
           display: 'flex',
@@ -55,10 +63,14 @@ export function Hit({
           borderWidth: flat.borderWidth ?? 0,
           borderStyle: 'solid',
           borderColor: (flat.borderColor as string) || 'transparent',
+          boxSizing: 'border-box',
+          outline: 'none',
           width: flat.width === '100%' || flat.flex === 1 ? '100%' : flat.width,
+          height: flat.height,
           minWidth: flat.minWidth,
+          minHeight: flat.minHeight,
           flex: flat.flex,
-          flexShrink: flat.flexShrink,
+          flexShrink: flat.flexShrink ?? 0,
           cursor: disabled ? 'default' : 'pointer',
           opacity: disabled ? 0.65 : 1,
           font: 'inherit',
@@ -111,7 +123,9 @@ export function Field({
 }: TextInputProps & { label: string }) {
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={styles.fieldLabel} numberOfLines={1}>
+        {label}
+      </Text>
       <TextInput
         placeholderTextColor="#a89888"
         style={[styles.input, props.multiline && styles.textarea]}
@@ -162,15 +176,64 @@ export function SlotPicker({
   onChange: (slot: MealSlot) => void
   counts?: Partial<Record<MealSlot, number>>
 }) {
+  const { t } = useI18n()
   return (
     <View style={styles.slots}>
       {SLOTS.map((s) => (
         <Hit key={s.id} onPress={() => onChange(s.id)} style={[styles.slot, s.id === value && styles.slotOn]}>
           <Text style={styles.slotIco}>{s.icon}</Text>
-          <Text style={styles.slotLabel}>{s.label}</Text>
-          {counts ? <Text style={styles.slotHint}>{counts[s.id] ?? 0} yemek</Text> : null}
+          <Text style={styles.slotLabel}>{slotLabel(s.id, t)}</Text>
+          {counts ? <Text style={styles.slotHint}>{t('mealCountShort', { n: counts[s.id] ?? 0 })}</Text> : null}
         </Hit>
       ))}
+    </View>
+  )
+}
+
+function FlagTR() {
+  return (
+    <View style={[styles.flag, { backgroundColor: '#E30A17' }]}>
+      <View style={styles.flagTrMoonOuter} />
+      <View style={styles.flagTrMoonCut} />
+      <Text style={styles.flagTrStar}>★</Text>
+    </View>
+  )
+}
+
+function FlagDE() {
+  return (
+    <View style={styles.flag}>
+      <View style={{ flex: 1, backgroundColor: '#000' }} />
+      <View style={{ flex: 1, backgroundColor: '#DD0000' }} />
+      <View style={{ flex: 1, backgroundColor: '#FFCC00' }} />
+    </View>
+  )
+}
+
+export function LanguageSwitcher({ top = 8, right = 12 }: { top?: number; right?: number }) {
+  const { lang, setLang } = useI18n()
+  return (
+    <View pointerEvents="box-none" style={[styles.langDock, { top, right }]}>
+      <Hit
+        quiet
+        label="Türkçe"
+        onPress={() => {
+          if (lang !== 'tr') setLang('tr')
+        }}
+        style={[styles.langBtn, lang === 'tr' && styles.langBtnOn]}
+      >
+        <FlagTR />
+      </Hit>
+      <Hit
+        quiet
+        label="Deutsch"
+        onPress={() => {
+          if (lang !== 'de') setLang('de')
+        }}
+        style={[styles.langBtn, lang === 'de' && styles.langBtnOn]}
+      >
+        <FlagDE />
+      </Hit>
     </View>
   )
 }
@@ -227,6 +290,7 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   fieldLabel: {
+    height: 16,
     fontSize: 12,
     fontWeight: '600',
     color: colors.muted,
@@ -252,6 +316,7 @@ export const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
+    minHeight: 50,
     alignItems: 'center',
   },
   primaryText: {
@@ -319,6 +384,8 @@ export const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 6,
     paddingHorizontal: 12,
+    minWidth: 72,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#c4ae5a',
   },
@@ -336,6 +403,7 @@ export const styles = StyleSheet.create({
   },
   topbar: {
     flexDirection: 'row',
+    paddingRight: 88,
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 12,
@@ -419,5 +487,62 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginTop: 10,
+  },
+  langDock: {
+    position: 'absolute',
+    zIndex: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  langBtn: {
+    width: 36,
+    height: 36,
+    minWidth: 36,
+    minHeight: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  langBtnOn: {
+    borderColor: colors.accent,
+  },
+  flag: {
+    width: 22,
+    height: 15,
+    borderRadius: 3,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(61, 42, 28, 0.2)',
+  },
+  flagTrMoonOuter: {
+    position: 'absolute',
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+    top: 3,
+    left: 4,
+  },
+  flagTrMoonCut: {
+    position: 'absolute',
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#E30A17',
+    top: 4,
+    left: 6,
+  },
+  flagTrStar: {
+    position: 'absolute',
+    right: 3,
+    top: 2,
+    color: '#fff',
+    fontSize: 7,
+    lineHeight: 11,
   },
 })

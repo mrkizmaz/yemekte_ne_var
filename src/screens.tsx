@@ -10,19 +10,10 @@ import {
   Text,
   View,
 } from 'react-native'
-import {
-  DAY_VIEWS,
-  addDays,
-  dateTimeLabel,
-  isoDate,
-  isPastDate,
-  isPublishedDate,
-  shortDate,
-  weekDates,
-  weekStart,
-  weekdayLabel,
-  type DayView,
-} from './dates'
+import { DAY_VIEWS, addDays, isoDate, isPastDate, isPublishedDate, weekDates, weekStart, type DayView } from './dates'
+import { slotHint, slotLabel, useI18n } from './i18n'
+import { dateTimeName, shortDateLabel, weekdayName, weekdayShort } from './i18n/dates'
+import { msg } from './i18n/translations'
 import { useStore } from './store'
 import { colors, slotBar } from './theme'
 import { SLOTS, likesOf, dislikesOf, slotOf, type Meal, type MealSlot } from './types'
@@ -52,18 +43,20 @@ function notify(title: string, message?: string) {
 
 function sendVote(action: () => Promise<void>) {
   void action().catch((err) => {
-    notify('Oy kaydedilemedi', err instanceof Error ? err.message : 'Tekrar dene.')
+    notify(msg('voteFailed'), err instanceof Error ? err.message : msg('tryAgain'))
   })
 }
 
 function VoteButton({
   label,
+  kind,
   locked,
   active,
   onPress,
   children,
 }: {
   label: string
+  kind: 'like' | 'dislike'
   locked: boolean
   active?: boolean
   onPress: () => void
@@ -71,7 +64,7 @@ function VoteButton({
 }) {
   const handle = () => {
     if (locked) {
-      notify('Kilitli', 'Geçmiş menü yalnızca görüntülenir.')
+      notify(msg('locked'), msg('lockedPast'))
       return
     }
     onPress()
@@ -89,7 +82,7 @@ function VoteButton({
           flexDirection: 'row',
           alignItems: 'center',
           gap: '6px',
-          background: active ? (label === 'Beğen' ? '#d7ebe2' : '#f3d6d0') : '#fff',
+          background: active ? (kind === 'like' ? '#d7ebe2' : '#f3d6d0') : '#fff',
           borderRadius: 14,
           padding: '8px 10px',
           minWidth: 52,
@@ -107,7 +100,7 @@ function VoteButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={handle}
-      style={[ui.vote, active && (label === 'Beğen' ? ui.voteOnLike : ui.voteOnDislike)]}
+      style={[ui.vote, active && (kind === 'like' ? ui.voteOnLike : ui.voteOnDislike)]}
     >
       {children}
     </Pressable>
@@ -115,6 +108,7 @@ function VoteButton({
 }
 
 export function MealVotes({ mealId, locked }: { mealId: string; locked: boolean }) {
+  const { t } = useI18n()
   const { mealVotes, userName, voteMeal } = useStore()
   const mine = mealVotes.find((v) => v.mealId === mealId && v.userName === userName)?.value
   const likes = mealVotes.filter((v) => v.mealId === mealId && v.value === 'like').length
@@ -123,7 +117,8 @@ export function MealVotes({ mealId, locked }: { mealId: string; locked: boolean 
   return (
     <View style={local.voteRow}>
       <VoteButton
-        label="Beğen"
+        label={t('like')}
+        kind="like"
         locked={locked}
         active={mine === 'like'}
         onPress={() => sendVote(() => voteMeal(mealId, 'like'))}
@@ -134,7 +129,8 @@ export function MealVotes({ mealId, locked }: { mealId: string; locked: boolean 
         </Text>
       </VoteButton>
       <VoteButton
-        label="Beğenme"
+        label={t('dislike')}
+        kind="dislike"
         locked={locked}
         active={mine === 'dislike'}
         onPress={() => sendVote(() => voteMeal(mealId, 'dislike'))}
@@ -149,6 +145,7 @@ export function MealVotes({ mealId, locked }: { mealId: string; locked: boolean 
 }
 
 export function Welcome() {
+  const { t } = useI18n()
   const { loginUser, registerUser } = useStore()
   const [screen, setScreen] = useState<'login' | 'register'>('login')
   const [username, setUsername] = useState('')
@@ -159,23 +156,27 @@ export function Welcome() {
 
   return (
     <ScrollView contentContainerStyle={local.welcome} keyboardShouldPersistTaps="handled">
-      <View style={{ alignItems: 'center' }}>
+      <View style={local.welcomeBrand}>
         <View style={local.logoWrap}>
           <Image
             source={require('./assets/seyyid-kamil-logo.jpg')}
             style={local.logo}
             resizeMode="contain"
-            accessibilityLabel="Seyyid Kamil Talebe Yurdu"
+            accessibilityLabel={t('dormName')}
           />
         </View>
-        <Brand size={36}>Bugün ne var?</Brand>
-        <Text style={[ui.muted, { marginTop: 10, textAlign: 'center' }]}>
-          Seyyid Kamil Talebe Yurdu menüsü. Kullanıcı adı ve şifre yeterli.
-        </Text>
+        <View style={local.welcomeHead}>
+          <View style={local.welcomeTitle}>
+            <Brand size={36}>{t('welcomeTitle')}</Brand>
+          </View>
+          <Text style={local.welcomeLead} numberOfLines={3}>
+            {t('welcomeLead')}
+          </Text>
+        </View>
       </View>
-      <View>
+      <View style={local.welcomeForm}>
         <Field
-          label="Kullanıcı adı"
+          label={t('username')}
           value={username}
           autoCapitalize="none"
           autoCorrect={false}
@@ -184,10 +185,10 @@ export function Welcome() {
             setUsername(v)
             setError('')
           }}
-          placeholder="Kullanıcı adı"
+          placeholder={t('username')}
         />
         <Field
-          label="Şifre"
+          label={t('password')}
           value={password}
           secureTextEntry
           autoComplete={isRegister ? 'new-password' : 'password'}
@@ -195,12 +196,12 @@ export function Welcome() {
             setPassword(v)
             setError('')
           }}
-          placeholder={isRegister ? 'En az 6 karakter' : 'Şifre'}
+          placeholder={isRegister ? t('passwordHint') : t('password')}
         />
         {error ? <Text style={ui.error}>{error}</Text> : null}
         <View style={{ height: 12 }} />
         <PrimaryButton
-          title={busy ? 'Bekle...' : isRegister ? 'Kayıt ol' : 'Giriş yap'}
+          title={busy ? t('wait') : isRegister ? t('register') : t('login')}
           disabled={busy}
           onPress={() => {
             void (async () => {
@@ -223,8 +224,8 @@ export function Welcome() {
             setError('')
           }}
         >
-          <Text style={local.authSwitch}>
-            {isRegister ? 'Hesabın var mı? Giriş yap' : 'Hesabın yok mu? Kayıt ol'}
+          <Text style={local.authSwitch} numberOfLines={2}>
+            {isRegister ? t('haveAccount') : t('noAccount')}
           </Text>
         </Hit>
       </View>
@@ -241,6 +242,7 @@ export function Home({
   setDayView: (d: DayView) => void
   onOpen: (id: string) => void
 }) {
+  const { t, lang } = useI18n()
   const { meals, userName, publishedWeeks } = useStore()
   const today = isoDate()
   const [openDay, setOpenDay] = useState(today)
@@ -250,29 +252,30 @@ export function Home({
   const locked = dayView === 'dun'
   const hello =
     dayView === 'hafta'
-      ? `Merhaba ${userName}, haftalık menü.`
+      ? t('helloWeek', { name: userName })
       : dayView === 'dun'
-        ? `Merhaba ${userName}, dünün menüsü yalnızca görüntülenir.`
+        ? t('helloYesterday', { name: userName })
         : dayView === 'yarin'
-          ? `Merhaba ${userName}, yarının menüsü hazır.`
-          : `Merhaba ${userName}, günün menüsü hazır.`
+          ? t('helloTomorrow', { name: userName })
+          : t('helloToday', { name: userName })
+  const dayViewLabel = { dun: t('yesterday'), bugun: t('today'), yarin: t('tomorrow'), hafta: t('week') }
 
   return (
     <>
       <View style={ui.topbar}>
         <View style={{ flex: 1 }}>
-          <Brand>Ne Var?</Brand>
-          <Text style={ui.sub}>{hello}</Text>
+          <Brand>{t('brand')}</Brand>
+          <Text style={[ui.sub, { minHeight: 40 }]}>{hello}</Text>
         </View>
       </View>
       <View style={local.dayNav}>
         <View style={local.dayNavLeft}>
           {DAY_VIEWS.filter((d) => d.id !== 'hafta').map((d) => (
-            <Pill key={d.id} label={d.label} on={dayView === d.id} onPress={() => setDayView(d.id)} />
+            <Pill key={d.id} label={dayViewLabel[d.id]} on={dayView === d.id} onPress={() => setDayView(d.id)} />
           ))}
         </View>
         {DAY_VIEWS.filter((d) => d.id === 'hafta').map((d) => (
-          <Pill key={d.id} label={d.label} on={dayView === d.id} onPress={() => setDayView(d.id)} />
+          <Pill key={d.id} label={dayViewLabel[d.id]} on={dayView === d.id} onPress={() => setDayView(d.id)} />
         ))}
       </View>
       {dayView === 'hafta'
@@ -291,25 +294,29 @@ export function Home({
                 <Hit onPress={() => setOpenDay(open ? '' : date)} style={local.accHead}>
                   <View>
                     <Text style={local.h3}>
-                      {weekdayLabel(date)} · {shortDate(date)}
+                      {weekdayName(date, lang)} · {shortDateLabel(date, lang)}
                     </Text>
                     <Text style={ui.muted}>
-                      {!live ? 'Henüz yayınlanmadı' : past ? 'Yalnızca görüntüleme' : `${dayMeals.length} yemek`}
+                      {!live
+                        ? t('notPublished')
+                        : past
+                          ? t('viewOnly')
+                          : t('mealCount', { n: dayMeals.length })}
                     </Text>
                   </View>
                   <Text style={local.chev}>{open ? '▴' : '▾'}</Text>
                 </Hit>
                 {open ? (
                   <View style={local.accBody}>
-                    {!live ? <Text style={ui.muted}>Bu hafta henüz yayınlanmadı.</Text> : null}
-                    {live && dayMeals.length === 0 ? <Text style={ui.muted}>Bu güne yemek yok.</Text> : null}
+                    {!live ? <Text style={ui.muted}>{t('weekNotPublished')}</Text> : null}
+                    {live && dayMeals.length === 0 ? <Text style={ui.muted}>{t('noMealsDay')}</Text> : null}
                     {live
                       ? dayMeals.map((meal) => (
                           <View key={meal.id} style={local.weekLine}>
                             <View style={{ flex: 1 }}>
                               <Text style={local.h3}>{meal.name}</Text>
                               <Text style={ui.muted}>
-                                {slotOf(meal.slot).icon} {slotOf(meal.slot).label}
+                                {slotOf(meal.slot).icon} {slotLabel(meal.slot, t)}
                               </Text>
                             </View>
                             <MealVotes mealId={meal.id} locked={past} />
@@ -327,11 +334,11 @@ export function Home({
               <Card key={s.id} style={{ padding: 12 }}>
                 <View style={[local.slotBar, { backgroundColor: slotBar[s.id] }]}>
                   <Text style={local.slotBarIco}>{s.icon}</Text>
-                  <Text style={local.slotBarStrong}>{s.label}</Text>
-                  <Text style={local.slotBarSmall}>{s.hint}</Text>
+                  <Text style={local.slotBarStrong}>{slotLabel(s.id, t)}</Text>
+                  <Text style={local.slotBarSmall}>{slotHint(s.id, t)}</Text>
                 </View>
                 {dayMeals.length === 0 ? (
-                  <Text style={[ui.muted, { marginTop: 6 }]}>Bu öğün için yemek yok.</Text>
+                  <Text style={[ui.muted, { marginTop: 6 }]}>{t('noMealsSlot')}</Text>
                 ) : (
                   dayMeals.map((meal) => (
                     <View key={meal.id} style={local.mealBlock}>
@@ -341,7 +348,7 @@ export function Home({
                           <Text style={ui.muted}>{meal.description}</Text>
                         </View>
                         <Hit onPress={() => onOpen(meal.id)} style={local.commentOpen}>
-                          <Text style={local.commentOpenText}>{locked ? 'Yorumlar' : 'Detay'}</Text>
+                          <Text style={local.commentOpenText}>{locked ? t('comments') : t('details')}</Text>
                         </Hit>
                       </View>
                       <MealVotes mealId={meal.id} locked={locked} />
@@ -356,17 +363,17 @@ export function Home({
 }
 
 export function MealDetail({ mealId, onBack }: { mealId: string; onBack: () => void }) {
+  const { t, lang } = useI18n()
   const { meals, commentsFor, addComment } = useStore()
   const meal = meals.find((m) => m.id === mealId)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
 
   if (!meal) {
-    return <GhostButton title="Geri" onPress={onBack} />
+    return <GhostButton title={t('back')} onPress={onBack} />
   }
 
   const comments = commentsFor(meal.id)
-  const slot = slotOf(meal.slot)
   const interactive = !isPastDate(meal.date)
 
   return (
@@ -375,35 +382,33 @@ export function MealDetail({ mealId, onBack }: { mealId: string; onBack: () => v
         <Hit onPress={onBack} style={ui.back}>
           <Text>←</Text>
         </Hit>
-        <Text style={ui.badge}>{slot.label}</Text>
-        <Text style={ui.badge}>{shortDate(meal.date)}</Text>
+        <Text style={ui.badge}>{slotLabel(meal.slot, t)}</Text>
+        <Text style={ui.badge}>{shortDateLabel(meal.date, lang)}</Text>
       </View>
       <Brand>{meal.name}</Brand>
       <Text style={[ui.muted, { marginBottom: 14 }]}>{meal.description}</Text>
       <Card>
         <Text style={ui.muted}>
-          <Text style={{ fontWeight: '700', color: colors.ink }}>Malzemeler: </Text>
+          <Text style={{ fontWeight: '700', color: colors.ink }}>{t('ingredients')}: </Text>
           {meal.ingredients}
         </Text>
       </Card>
       <Card>
-        <Text style={local.h3}>Oyunu ver</Text>
-        <Text style={ui.muted}>
-          {interactive ? 'Bu yemeği beğen veya beğenme.' : 'Geçmiş gün kilitli. Oylar yalnızca görüntülenir.'}
-        </Text>
+        <Text style={local.h3}>{t('giveVote')}</Text>
+        <Text style={ui.muted}>{interactive ? t('voteHint') : t('voteLocked')}</Text>
         <View style={{ height: 8 }} />
         <MealVotes mealId={meal.id} locked={!interactive} />
       </Card>
       <Card>
-        <Text style={local.h3}>Yorumlar</Text>
+        <Text style={local.h3}>{t('comments')}</Text>
         {comments.length === 0 ? (
-          <Text style={ui.muted}>{interactive ? 'İlk yorumu sen yaz.' : 'Bu güne yorum yok.'}</Text>
+          <Text style={ui.muted}>{interactive ? t('firstComment') : t('noComments')}</Text>
         ) : null}
         {comments.map((c) => (
           <View key={c.id} style={local.comment}>
             <View style={local.commentHead}>
               <Text style={{ fontWeight: '700', color: colors.ink }}>{c.userName}</Text>
-              {c.createdAt ? <Text style={ui.muted}>{dateTimeLabel(c.createdAt)}</Text> : null}
+              {c.createdAt ? <Text style={ui.muted}>{dateTimeName(c.createdAt, lang)}</Text> : null}
             </View>
             <Text style={ui.muted}>{c.text}</Text>
           </View>
@@ -411,15 +416,15 @@ export function MealDetail({ mealId, onBack }: { mealId: string; onBack: () => v
         {interactive ? (
           <>
             <Field
-              label="Yorum ekle"
+              label={t('addComment')}
               value={text}
               multiline
               onChangeText={setText}
-              placeholder="Tadı, porsiyon, önerin..."
+              placeholder={t('commentPlaceholder')}
             />
             <View style={{ height: 10 }} />
             <PrimaryButton
-              title={sending ? 'Gönderiliyor...' : 'Gönder'}
+              title={sending ? t('sending') : t('send')}
               disabled={sending || !text.trim()}
               onPress={() => {
                 const trimmed = text.trim()
@@ -439,10 +444,10 @@ export function MealDetail({ mealId, onBack }: { mealId: string; onBack: () => v
 }
 
 export function AdminMealInfo({ mealId, onBack }: { mealId: string; onBack: () => void }) {
+  const { t, lang } = useI18n()
   const { meals } = useStore()
   const meal = meals.find((m) => m.id === mealId)
-  if (!meal) return <GhostButton title="Geri" onPress={onBack} />
-  const slot = slotOf(meal.slot)
+  if (!meal) return <GhostButton title={t('back')} onPress={onBack} />
 
   return (
     <>
@@ -450,24 +455,25 @@ export function AdminMealInfo({ mealId, onBack }: { mealId: string; onBack: () =
         <Hit onPress={onBack} style={ui.back}>
           <Text>←</Text>
         </Hit>
-        <Text style={ui.badge}>{slot.label}</Text>
-        <Text style={ui.badge}>{shortDate(meal.date)}</Text>
+        <Text style={ui.badge}>{slotLabel(meal.slot, t)}</Text>
+        <Text style={ui.badge}>{shortDateLabel(meal.date, lang)}</Text>
       </View>
       <Brand>{meal.name}</Brand>
       <Text style={[ui.muted, { marginBottom: 14 }]}>{meal.description}</Text>
       <Card>
-        <Text style={local.h3}>Malzemeler</Text>
-        <Text style={ui.muted}>{meal.ingredients || 'Eklenmemiş.'}</Text>
+        <Text style={local.h3}>{t('ingredients')}</Text>
+        <Text style={ui.muted}>{meal.ingredients || t('notAdded')}</Text>
       </Card>
       <Card>
-        <Text style={local.h3}>Yapılışı</Text>
-        <Text style={[ui.muted, { lineHeight: 22 }]}>{meal.recipe || 'Yapılış henüz yazılmamış.'}</Text>
+        <Text style={local.h3}>{t('recipe')}</Text>
+        <Text style={[ui.muted, { lineHeight: 22 }]}>{meal.recipe || t('noRecipe')}</Text>
       </Card>
     </>
   )
 }
 
 export function Suggest() {
+  const { t } = useI18n()
   const { addSuggestion, voteSuggestion, suggestions, userName } = useStore()
   const [slot, setSlot] = useState<MealSlot>('ogle')
   const [text, setText] = useState('')
@@ -488,15 +494,15 @@ export function Suggest() {
     <>
       <View style={ui.topbar}>
         <View style={{ flex: 1 }}>
-          <Brand>Öneriler</Brand>
-          <Text style={ui.sub}>Kullanıcıların önerdiği yemekler, beğeni sırasıyla.</Text>
+          <Brand>{t('suggestions')}</Brand>
+          <Text style={ui.sub}>{t('suggestionsSub')}</Text>
         </View>
         <Hit onPress={() => setOpen(true)} style={local.addBtn}>
-          <Text style={local.addBtnText}>Yemek öner</Text>
+          <Text style={local.addBtnText}>{t('suggestMeal')}</Text>
         </Hit>
       </View>
       {ranked.length === 0 ? (
-        <Text style={ui.empty}>Henüz önerilen yemek yok. İlkini sen ekle.</Text>
+        <Text style={ui.empty}>{t('noSuggestionsUser')}</Text>
       ) : (
         ranked.map((s) => {
           const mine = s.votes?.[userName]
@@ -507,13 +513,14 @@ export function Suggest() {
                 <View style={{ flex: 1 }}>
                   <Text style={local.h3}>{s.text}</Text>
                   <Text style={ui.muted}>
-                    {slotOf(s.slot).label} · {s.userName}
+                    {slotLabel(s.slot, t)} · {s.userName}
                   </Text>
                 </View>
               </View>
               <View style={local.voteRow}>
                 <VoteButton
-                  label="Beğen"
+                  label={t('like')}
+                  kind="like"
                   locked={false}
                   active={mine === 'like'}
                   onPress={() => sendVote(() => voteSuggestion(s.id, 'like'))}
@@ -524,7 +531,8 @@ export function Suggest() {
                   </Text>
                 </VoteButton>
                 <VoteButton
-                  label="Beğenme"
+                  label={t('dislike')}
+                  kind="dislike"
                   locked={false}
                   active={mine === 'dislike'}
                   onPress={() => sendVote(() => voteSuggestion(s.id, 'dislike'))}
@@ -545,16 +553,16 @@ export function Suggest() {
             <Hit onPress={closeModal} style={ui.back}>
               <Text>←</Text>
             </Hit>
-            <Brand size={22}>Yemek öner</Brand>
+            <Brand size={22}>{t('suggestMeal')}</Brand>
           </View>
-          <Text style={ui.muted}>Menüde olmasını istediğin yemeği yaz. Herkes beğenebilir.</Text>
-          <Text style={[ui.fieldLabel, { marginTop: 18 }]}>Öğün</Text>
+          <Text style={ui.muted}>{t('suggestLead')}</Text>
+          <Text style={[ui.fieldLabel, { marginTop: 18 }]}>{t('slot')}</Text>
           <View style={{ height: 8 }} />
           <SlotPicker value={slot} onChange={setSlot} />
-          <Field label="Yemek adı" value={text} onChangeText={setText} placeholder="Örn. Mantı" />
+          <Field label={t('mealName')} value={text} onChangeText={setText} placeholder={t('mealNameExample')} />
           <View style={{ height: 16 }} />
           <PrimaryButton
-            title="Öneriyi gönder"
+            title={t('sendSuggestion')}
             onPress={() => {
               if (!text.trim()) return
               void addSuggestion(slot, text.trim())
@@ -579,6 +587,7 @@ const emptyForm = {
 }
 
 export function AdminSuggestions() {
+  const { t } = useI18n()
   const { suggestions, markSuggestion, deleteSuggestion } = useStore()
   const fresh = suggestions.filter((s) => s.status === 'yeni')
 
@@ -586,36 +595,36 @@ export function AdminSuggestions() {
     <>
       <View style={ui.topbar}>
         <View style={{ flex: 1 }}>
-          <Brand>Öneriler</Brand>
-          <Text style={ui.sub}>Kullanıcıların gönderdiği yemek önerileri.</Text>
+          <Brand>{t('suggestions')}</Brand>
+          <Text style={ui.sub}>{t('adminSuggestionsSub')}</Text>
         </View>
-        {fresh.length > 0 ? <Text style={ui.badge}>{fresh.length} yeni</Text> : null}
+        {fresh.length > 0 ? <Text style={ui.badge}>{t('newCount', { n: fresh.length })}</Text> : null}
       </View>
       {suggestions.length === 0 ? (
-        <Text style={ui.empty}>Henüz öneri yok.</Text>
+        <Text style={ui.empty}>{t('noSuggestionsAdmin')}</Text>
       ) : (
         suggestions.map((s) => (
           <Card key={s.id}>
             <Text style={{ fontWeight: '700', color: colors.ink }}>
-              {s.userName} · {SLOTS.find((x) => x.id === s.slot)?.label} · {likesOf(s)} beğeni
+              {s.userName} · {slotLabel(s.slot, t)} · {t('likesCount', { n: likesOf(s) })}
             </Text>
             <Text style={ui.muted}>{s.text}</Text>
             <View style={ui.row}>
               {s.status === 'yeni' ? (
                 <GhostButton
-                  title="İncelendi"
+                  title={t('reviewed')}
                   onPress={() =>
                     void markSuggestion(s.id).catch((err) =>
-                      notify('İşlem olmadı', err instanceof Error ? err.message : 'Tekrar dene.'),
+                      notify(t('actionFailed'), err instanceof Error ? err.message : t('tryAgain')),
                     )
                   }
                 />
               ) : null}
               <DangerButton
-                title="Sil"
+                title={t('delete')}
                 onPress={() =>
                   void deleteSuggestion(s.id).catch((err) =>
-                    notify('Silinemedi', err instanceof Error ? err.message : 'Tekrar dene.'),
+                    notify(t('deleteFailed'), err instanceof Error ? err.message : t('tryAgain')),
                   )
                 }
               />
@@ -628,6 +637,7 @@ export function AdminSuggestions() {
 }
 
 export function AdminPanel({ onOpen }: { onOpen: (id: string) => void }) {
+  const { t, lang } = useI18n()
   const { meals, addMeal, updateMeal, deleteMeal, publishedWeeks, publishWeek } = useStore()
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -695,24 +705,24 @@ export function AdminPanel({ onOpen }: { onOpen: (id: string) => void }) {
     <>
       <View style={ui.topbar}>
         <View>
-          <Brand>Haftalık menü</Brand>
-          <Text style={ui.sub}>Menüyü hazırla ve yayınla.</Text>
+          <Brand>{t('weeklyMenu')}</Brand>
+          <Text style={ui.sub}>{t('weeklyMenuSub')}</Text>
         </View>
       </View>
       <Card>
         <View style={local.weekNav}>
           <GhostButton title="←" onPress={() => goWeek(-7)} />
           <Text style={{ fontWeight: '700', color: colors.ink }}>
-            {shortDate(week)} – {shortDate(addDays(week, 6))}
+            {shortDateLabel(week, lang)} – {shortDateLabel(addDays(week, 6), lang)}
           </Text>
           <GhostButton title="→" onPress={() => goWeek(7)} />
         </View>
-        <Text style={ui.muted}>{live ? 'Bu hafta yayınlandı.' : 'Bu hafta henüz yayınlanmadı.'}</Text>
+        <Text style={ui.muted}>{live ? t('weekPublished') : t('weekUnpublished')}</Text>
         <View style={{ height: 10 }} />
         {live ? (
-          <GhostButton title="Yayından kaldır" onPress={() => void publishWeek(week, false)} />
+          <GhostButton title={t('unpublish')} onPress={() => void publishWeek(week, false)} />
         ) : (
-          <PrimaryButton title="Haftayı yayınla" onPress={() => void publishWeek(week, true)} />
+          <PrimaryButton title={t('publishWeek')} onPress={() => void publishWeek(week, true)} />
         )}
       </Card>
       <View style={local.seven}>
@@ -728,48 +738,48 @@ export function AdminPanel({ onOpen }: { onOpen: (id: string) => void }) {
               }}
               style={[local.day, local[tone], on && local[`${tone}On` as const]]}
             >
-              <Text style={[local.dayText, on && { color: '#fff' }]}>{weekdayLabel(date).slice(0, 3)}</Text>
-              <Text style={[local.daySmall, on && { color: '#fff' }]}>{shortDate(date)}</Text>
+              <Text style={[local.dayText, on && { color: '#fff' }]}>{weekdayShort(date, lang)}</Text>
+              <Text style={[local.daySmall, on && { color: '#fff' }]}>{shortDateLabel(date, lang)}</Text>
             </Hit>
           )
         })}
       </View>
       <Card>
-        <Text style={local.h3}>{editingId ? 'Yemeği düzenle' : 'Yeni yemek'}</Text>
-        <Text style={[ui.fieldLabel, { marginTop: 12 }]}>Öğün</Text>
+        <Text style={local.h3}>{editingId ? t('editMeal') : t('newMeal')}</Text>
+        <Text style={[ui.fieldLabel, { marginTop: 12 }]}>{t('slot')}</Text>
         <View style={{ height: 8 }} />
         <SlotPicker value={form.slot} onChange={(slot) => setForm({ ...form, slot })} />
         <Field
-          label="Yemek adı"
+          label={t('mealName')}
           value={form.name}
           onChangeText={(name) => setForm({ ...form, name })}
-          placeholder="Örn. İçli köfte"
+          placeholder={t('mealExample')}
         />
         <Field
-          label="Kısa açıklama"
+          label={t('shortDesc')}
           value={form.description}
           onChangeText={(description) => setForm({ ...form, description })}
         />
         <Field
-          label="Malzemeler"
+          label={t('ingredients')}
           value={form.ingredients}
           onChangeText={(ingredients) => setForm({ ...form, ingredients })}
         />
         <Field
-          label="Yapılışı"
+          label={t('recipe')}
           value={form.recipe}
           multiline
           onChangeText={(recipe) => setForm({ ...form, recipe })}
-          placeholder="Adım adım nasıl hazırlanır..."
+          placeholder={t('recipePlaceholder')}
         />
         <View style={ui.row}>
           <View style={{ flex: 1 }}>
-            <PrimaryButton title={editingId ? 'Kaydet' : 'Listeye ekle'} onPress={() => void submit()} />
+            <PrimaryButton title={editingId ? t('save') : t('addToList')} onPress={() => void submit()} />
           </View>
           {editingId ? (
             <View style={{ flex: 1 }}>
               <GhostButton
-                title="Vazgeç"
+                title={t('cancel')}
                 onPress={() => {
                   setEditingId(null)
                   setForm({ ...emptyForm, date: selectedDate })
@@ -795,8 +805,8 @@ export function AdminPanel({ onOpen }: { onOpen: (id: string) => void }) {
             <Text style={ui.muted}>{meal.description}</Text>
           </Hit>
           <View style={ui.row}>
-            <GhostButton title="Düzenle" onPress={() => startEdit(meal)} />
-            <DangerButton title="Sil" onPress={() => void deleteMeal(meal.id)} />
+            <GhostButton title={t('edit')} onPress={() => startEdit(meal)} />
+            <DangerButton title={t('delete')} onPress={() => void deleteMeal(meal.id)} />
           </View>
         </Card>
       ))}
@@ -817,10 +827,11 @@ function votedMeals(
 }
 
 export function Profile() {
+  const { t, lang } = useI18n()
   const { username, isAdmin, logout, deleteAccount, resetDemo, meals, ratings, comments, mealVotes, users } =
     useStore()
   const liked = votedMeals(mealVotes, meals, username, 'like')
-  const accounts = [...users].sort((a, b) => a.username.localeCompare(b.username, 'tr'))
+  const accounts = [...users].sort((a, b) => a.username.localeCompare(b.username, lang))
   const [openUser, setOpenUser] = useState('')
   const [adminView, setAdminView] = useState<'users' | 'meals'>('users')
   const [deleteError, setDeleteError] = useState('')
@@ -834,33 +845,33 @@ export function Profile() {
         })
         .sort(
           (a, b) =>
-            b.total - a.total || b.likes - a.likes || a.meal.name.localeCompare(b.meal.name, 'tr'),
+            b.total - a.total || b.likes - a.likes || a.meal.name.localeCompare(b.meal.name, lang),
         ),
-    [meals, mealVotes],
+    [meals, mealVotes, lang],
   )
 
   return (
     <>
       <View style={ui.topbar}>
         <View style={{ flex: 1 }}>
-          <Brand>Profil</Brand>
+          <Brand>{t('profile')}</Brand>
           <Text style={ui.sub}>
-            @{username} · {isAdmin ? 'Yönetici' : 'Kullanıcı'}
+            @{username} · {isAdmin ? t('adminRole') : t('userRole')}
           </Text>
         </View>
         <Hit onPress={() => void logout()} style={local.logout}>
-          <Text style={local.logoutText}>Çıkış yap</Text>
+          <Text style={local.logoutText}>{t('logout')}</Text>
         </Hit>
       </View>
       {isAdmin ? (
         <>
           <View style={[local.dayNav, { justifyContent: 'center' }]}>
-            <Pill label="Kullanıcılar" on={adminView === 'users'} onPress={() => setAdminView('users')} />
-            <Pill label="Yemekler" on={adminView === 'meals'} onPress={() => setAdminView('meals')} />
+            <Pill label={t('users')} on={adminView === 'users'} onPress={() => setAdminView('users')} />
+            <Pill label={t('meals')} on={adminView === 'meals'} onPress={() => setAdminView('meals')} />
           </View>
           {adminView === 'users' ? (
             accounts.length === 0 ? (
-              <Text style={ui.muted}>Kayıtlı kullanıcı yok.</Text>
+              <Text style={ui.muted}>{t('noUsers')}</Text>
             ) : (
               accounts.map((u) => {
                 const likes = votedMeals(mealVotes, meals, u.username, 'like')
@@ -879,14 +890,14 @@ export function Profile() {
                     {open ? (
                       <View style={local.accBody}>
                         {rows.length === 0 ? (
-                          <Text style={ui.muted}>Bu kullanıcının oyu yok.</Text>
+                          <Text style={ui.muted}>{t('noVotesUser')}</Text>
                         ) : (
                           rows.map(({ meal, vote }) => (
                             <View key={`${u.id}-${meal.id}-${vote}`} style={local.weekLine}>
                               <View style={{ flex: 1 }}>
                                 <Text style={local.h3}>{meal.name}</Text>
                                 <Text style={ui.muted}>
-                                  {slotOf(meal.slot).label} · {shortDate(meal.date)}
+                                  {slotLabel(meal.slot, t)} · {shortDateLabel(meal.date, lang)}
                                 </Text>
                               </View>
                               {vote === 'like' ? <ThumbUp /> : <ThumbDown />}
@@ -900,14 +911,14 @@ export function Profile() {
               })
             )
           ) : meals.length === 0 ? (
-            <Text style={ui.muted}>Henüz yemek yok.</Text>
+            <Text style={ui.muted}>{t('noMealsYet')}</Text>
           ) : (
             rankedMeals.map(({ meal, likes, dislikes }) => (
               <Card key={meal.id} style={local.rank}>
                 <View style={{ flex: 1 }}>
                   <Text style={local.h3}>{meal.name}</Text>
                   <Text style={ui.muted}>
-                    {slotOf(meal.slot).label} · {shortDate(meal.date)}
+                    {slotLabel(meal.slot, t)} · {shortDateLabel(meal.date, lang)}
                   </Text>
                 </View>
                 <View style={local.rankVotes}>
@@ -925,45 +936,45 @@ export function Profile() {
           )}
           <Card>
             <Text style={ui.muted}>
-              {meals.length} yemek · {ratings.length} puan · {comments.length} yorum
+              {t('stats', { meals: meals.length, ratings: ratings.length, comments: comments.length })}
             </Text>
             <View style={{ height: 10 }} />
-            <DangerButton title="Demo verisini sıfırla" onPress={() => void resetDemo()} />
+            <DangerButton title={t('resetDemo')} onPress={() => void resetDemo()} />
           </Card>
         </>
       ) : (
         <>
-          <Text style={local.likedTitle}>Beğendiğin yemekler</Text>
+          <Text style={local.likedTitle}>{t('likedTitle')}</Text>
           {liked.length === 0 ? (
-            <Text style={ui.muted}>Henüz beğendiğin yemek yok. Menüden beğenebilirsin.</Text>
+            <Text style={ui.muted}>{t('noLiked')}</Text>
           ) : (
             liked.map((meal) => (
               <Card key={meal.id}>
                 <Text style={local.h3}>{meal.name}</Text>
                 <Text style={ui.muted}>
-                  {slotOf(meal.slot).label} · {shortDate(meal.date)}
+                  {slotLabel(meal.slot, t)} · {shortDateLabel(meal.date, lang)}
                 </Text>
               </Card>
             ))
           )}
           <Card>
-            <Text style={ui.muted}>Hesabını ve bu uygulamadaki oylarını kalıcı olarak silebilirsin.</Text>
+            <Text style={ui.muted}>{t('deleteAccountLead')}</Text>
             {deleteError ? <Text style={ui.error}>{deleteError}</Text> : null}
             <View style={{ height: 10 }} />
             <DangerButton
-              title="Hesabı sil"
+              title={t('deleteAccount')}
               onPress={() => {
                 const go = () =>
                   void deleteAccount().then((err) => {
                     if (err) setDeleteError(err)
                   })
                 if (Platform.OS === 'web') {
-                  if (window.confirm('Hesabın silinsin mi? Bu işlem geri alınamaz.')) go()
+                  if (window.confirm(t('deleteConfirm'))) go()
                   return
                 }
-                Alert.alert('Hesabı sil', 'Hesabın silinsin mi? Bu işlem geri alınamaz.', [
-                  { text: 'Vazgeç', style: 'cancel' },
-                  { text: 'Sil', style: 'destructive', onPress: go },
+                Alert.alert(t('deleteAccount'), t('deleteConfirm'), [
+                  { text: t('cancel'), style: 'cancel' },
+                  { text: t('delete'), style: 'destructive', onPress: go },
                 ])
               }}
             />
@@ -977,20 +988,47 @@ export function Profile() {
 const local = StyleSheet.create({
   welcome: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: 24,
+    paddingTop: 80,
     paddingBottom: 32,
-    gap: 28,
+    gap: 20,
+  },
+  welcomeBrand: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  welcomeHead: {
+    width: '100%',
+    height: 112,
+    alignItems: 'center',
+  },
+  welcomeTitle: {
+    height: 46,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  welcomeLead: {
+    marginTop: 8,
+    height: 58,
+    textAlign: 'center',
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  welcomeForm: {
+    width: '100%',
   },
   logoWrap: {
     alignSelf: 'center',
     width: '100%',
-    maxWidth: 260,
+    maxWidth: 220,
     backgroundColor: '#fff',
     borderRadius: 28,
     paddingVertical: 16,
     paddingHorizontal: 18,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
     shadowColor: '#3d2a1c',
     shadowOpacity: 0.12,
     shadowRadius: 18,
@@ -1003,6 +1041,7 @@ const local = StyleSheet.create({
   },
   authSwitch: {
     marginTop: 12,
+    height: 40,
     textAlign: 'center',
     color: colors.muted,
     fontWeight: '600',
