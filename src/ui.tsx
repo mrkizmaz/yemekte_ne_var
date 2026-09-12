@@ -21,6 +21,7 @@ export function Hit({
   children,
   label,
   quiet,
+  className,
 }: {
   onPress: () => void
   disabled?: boolean
@@ -28,6 +29,7 @@ export function Hit({
   children: ReactNode
   label?: string
   quiet?: boolean
+  className?: string
 }) {
   const run = () => {
     if (!disabled) onPress()
@@ -39,6 +41,7 @@ export function Hit({
       {
         type: 'button',
         disabled,
+        className,
         onClick: run,
         onMouseDown: quiet
           ? (e: { preventDefault: () => void }) => {
@@ -75,6 +78,7 @@ export function Hit({
           opacity: disabled ? 0.65 : 1,
           font: 'inherit',
           color: 'inherit',
+          transition: 'background-color 140ms ease',
         },
       },
       children,
@@ -86,7 +90,7 @@ export function Hit({
       accessibilityLabel={label}
       onPress={run}
       disabled={disabled}
-      style={[style, disabled && styles.disabled]}
+      style={({ pressed }) => [style, pressed && styles.hitPressed, disabled && styles.disabled]}
     >
       {children}
     </Pressable>
@@ -442,6 +446,12 @@ export const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     gap: 2,
+    borderRadius: 14,
+    paddingVertical: 6,
+    marginHorizontal: 3,
+  },
+  hitPressed: {
+    backgroundColor: 'rgba(196, 92, 38, 0.12)',
   },
   navIco: {
     fontSize: 18,
@@ -453,6 +463,9 @@ export const styles = StyleSheet.create({
   },
   navOn: {
     color: colors.accent,
+  },
+  navBtnOn: {
+    backgroundColor: 'rgba(196, 92, 38, 0.08)',
   },
   empty: {
     color: colors.muted,

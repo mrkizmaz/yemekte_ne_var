@@ -154,7 +154,12 @@ function PressNav({
   onPress: () => void
 }) {
   return (
-    <Hit onPress={onPress} style={ui.navBtn} label={label}>
+    <Hit
+      onPress={onPress}
+      style={[ui.navBtn, on && ui.navBtnOn]}
+      className={on ? 'nv-nav is-on' : 'nv-nav'}
+      label={label}
+    >
       <Text style={ui.navIco}>{ico}</Text>
       <Text style={[ui.navLabel, on && ui.navOn]}>{label}</Text>
     </Hit>

@@ -7,3 +7,23 @@ body,
   overflow: hidden !important;
   overscroll-behavior: none;
 }
+
+button.nv-nav {
+  transition: background-color 140ms ease;
+}
+
+button.nv-nav:hover {
+  background: rgba(196, 92, 38, 0.1) !important;
+}
+
+button.nv-nav:active {
+  background: rgba(196, 92, 38, 0.16) !important;
+}
+
+button.nv-nav.is-on {
+  background: rgba(196, 92, 38, 0.08) !important;
+}
+
+button.nv-nav.is-on:hover {
+  background: rgba(196, 92, 38, 0.14) !important;
+}

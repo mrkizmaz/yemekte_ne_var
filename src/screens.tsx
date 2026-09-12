@@ -853,14 +853,16 @@ export function Profile() {
     <>
       <View style={ui.topbar}>
         <View style={{ flex: 1 }}>
-          <Brand>{t('profile')}</Brand>
+          <View style={local.profileTitleRow}>
+            <Brand>{t('profile')}</Brand>
+            <Hit onPress={() => void logout()} style={local.logout}>
+              <Text style={local.logoutText}>{t('logout')}</Text>
+            </Hit>
+          </View>
           <Text style={ui.sub}>
             @{username} · {isAdmin ? t('adminRole') : t('userRole')}
           </Text>
         </View>
-        <Hit onPress={() => void logout()} style={local.logout}>
-          <Text style={local.logoutText}>{t('logout')}</Text>
-        </Hit>
       </View>
       {isAdmin ? (
         <>
@@ -1130,13 +1132,20 @@ const local = StyleSheet.create({
   futureOn: { backgroundColor: '#2f6b4f' },
   dayText: { fontSize: 11, fontWeight: '700', color: colors.ink },
   daySmall: { fontSize: 10, color: colors.muted, marginTop: 2 },
+  profileTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    gap: 10,
+  },
   logout: {
     backgroundColor: colors.logoutBg,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    flexShrink: 0,
   },
-  logoutText: { color: colors.logout, fontWeight: '700', fontSize: 14 },
+  logoutText: { color: colors.logout, fontWeight: '700', fontSize: 13 },
   likedTitle: {
     fontFamily: 'Georgia',
     fontSize: 22,
