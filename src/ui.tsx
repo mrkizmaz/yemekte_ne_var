@@ -12,12 +12,16 @@ import { SLOTS, type MealSlot } from './types'
 import { colors } from './theme'
 
 export function ThumbUp({ size = 18 }: { size?: number }) {
-  return <Text style={{ fontSize: size }}>👍</Text>
+  return (
+    <Text pointerEvents="none" style={{ fontSize: size }}>
+      👍
+    </Text>
+  )
 }
 
 export function ThumbDown({ size = 18 }: { size?: number }) {
   return (
-    <Text style={{ fontSize: size }} accessibilityLabel="Beğenme">
+    <Text pointerEvents="none" style={{ fontSize: size }}>
       👎
     </Text>
   )
@@ -284,6 +288,8 @@ export const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 10,
     minWidth: 52,
+    flexShrink: 0,
+    cursor: 'pointer',
   },
   voteOnLike: {
     backgroundColor: '#d7ebe2',

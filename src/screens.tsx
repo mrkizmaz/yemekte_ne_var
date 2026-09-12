@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   Alert,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -38,6 +39,12 @@ import {
   styles as ui,
 } from './ui'
 
+function sendVote(action: () => Promise<void>) {
+  void action().catch((err) => {
+    Alert.alert('Oy kaydedilemedi', err instanceof Error ? err.message : 'Tekrar dene.')
+  })
+}
+
 export function MealVotes({ mealId, locked }: { mealId: string; locked: boolean }) {
   const { mealVotes, userName, voteMeal } = useStore()
   const mine = mealVotes.find((v) => v.mealId === mealId && v.userName === userName)?.value
@@ -47,20 +54,28 @@ export function MealVotes({ mealId, locked }: { mealId: string; locked: boolean 
   return (
     <View style={local.voteRow}>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Beğen"
         disabled={locked}
-        onPress={() => void voteMeal(mealId, 'like').catch(() => undefined)}
+        onPress={() => sendVote(() => voteMeal(mealId, 'like'))}
         style={[ui.vote, mine === 'like' && ui.voteOnLike, locked && ui.disabled]}
       >
         <ThumbUp size={16} />
-        <Text style={ui.voteCount}>{likes}</Text>
+        <Text pointerEvents="none" style={ui.voteCount}>
+          {likes}
+        </Text>
       </Pressable>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Beğenme"
         disabled={locked}
-        onPress={() => void voteMeal(mealId, 'dislike').catch(() => undefined)}
+        onPress={() => sendVote(() => voteMeal(mealId, 'dislike'))}
         style={[ui.vote, mine === 'dislike' && ui.voteOnDislike, locked && ui.disabled]}
       >
         <ThumbDown size={16} />
-        <Text style={ui.voteCount}>{dislikes}</Text>
+        <Text pointerEvents="none" style={ui.voteCount}>
+          {dislikes}
+        </Text>
       </Pressable>
     </View>
   )
@@ -77,13 +92,18 @@ export function Welcome() {
 
   return (
     <ScrollView contentContainerStyle={local.welcome} keyboardShouldPersistTaps="handled">
-      <View>
-        <View style={local.hero}>
-          <Text style={local.heroEmoji}>🍽️</Text>
+      <View style={{ alignItems: 'center' }}>
+        <View style={local.logoWrap}>
+          <Image
+            source={require('./assets/seyyid-kamil-logo.jpg')}
+            style={local.logo}
+            resizeMode="contain"
+            accessibilityLabel="Seyyid Kamil Talebe Yurdu"
+          />
         </View>
         <Brand size={36}>Bugün ne var?</Brand>
-        <Text style={[ui.muted, { marginTop: 10 }]}>
-          Kullanıcı adı ve şifre yeterli. Yeni hesap için kayıt ol.
+        <Text style={[ui.muted, { marginTop: 10, textAlign: 'center' }]}>
+          Seyyid Kamil Talebe Yurdu menüsü. Kullanıcı adı ve şifre yeterli.
         </Text>
       </View>
       <View>
@@ -423,18 +443,26 @@ export function Suggest() {
               </View>
               <View style={local.voteRow}>
                 <Pressable
-                  onPress={() => void voteSuggestion(s.id, 'like')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Beğen"
+                  onPress={() => sendVote(() => voteSuggestion(s.id, 'like'))}
                   style={[ui.vote, mine === 'like' && ui.voteOnLike]}
                 >
                   <ThumbUp />
-                  <Text style={ui.voteCount}>{likesOf(s)}</Text>
+                  <Text pointerEvents="none" style={ui.voteCount}>
+                    {likesOf(s)}
+                  </Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => void voteSuggestion(s.id, 'dislike')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Beğenme"
+                  onPress={() => sendVote(() => voteSuggestion(s.id, 'dislike'))}
                   style={[ui.vote, mine === 'dislike' && ui.voteOnDislike]}
                 >
                   <ThumbDown />
-                  <Text style={ui.voteCount}>{dislikesOf(s)}</Text>
+                  <Text pointerEvents="none" style={ui.voteCount}>
+                    {dislikesOf(s)}
+                  </Text>
                 </Pressable>
               </View>
             </Card>
@@ -865,20 +893,30 @@ export function Profile() {
 const local = StyleSheet.create({
   welcome: {
     flexGrow: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 24,
     paddingBottom: 32,
+    gap: 28,
   },
-  hero: {
-    width: 84,
-    height: 84,
-    borderRadius: 28,
+  logoWrap: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 260,
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
+    borderRadius: 28,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    marginBottom: 8,
+    shadowColor: '#3d2a1c',
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
   },
-  heroEmoji: { fontSize: 42 },
+  logo: {
+    width: '100%',
+    height: 148,
+  },
   authSwitch: {
     marginTop: 12,
     textAlign: 'center',
@@ -901,6 +939,7 @@ const local = StyleSheet.create({
   weekLine: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     paddingVertical: 10,
     borderBottomWidth: 1,

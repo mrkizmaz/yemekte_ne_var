@@ -65,7 +65,27 @@ app.use((req, res, next) => {
   }
   next()
 })
-app.use(express.json({ limit: '200kb' }))
+app.use((req, res, next) => {
+  if (typeof req.body === 'string' && req.body) {
+    try {
+      req.body = JSON.parse(req.body)
+    } catch {
+      req.body = {}
+    }
+  }
+  if (Buffer.isBuffer(req.body)) {
+    try {
+      req.body = JSON.parse(req.body.toString('utf8') || '{}')
+    } catch {
+      req.body = {}
+    }
+  }
+  if (req.body !== undefined && req.body !== null && typeof req.body === 'object') {
+    next()
+    return
+  }
+  express.json({ limit: '200kb' })(req, res, next)
+})
 app.use(cookieParser())
 
 function signToken(user) {
