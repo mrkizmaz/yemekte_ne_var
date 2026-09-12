@@ -1,0 +1,355 @@
+import type { ReactNode } from 'react'
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+  type ViewStyle,
+} from 'react-native'
+import { SLOTS, type MealSlot } from './types'
+import { colors } from './theme'
+
+export function ThumbUp({ size = 18 }: { size?: number }) {
+  return <Text style={{ fontSize: size }}>👍</Text>
+}
+
+export function ThumbDown({ size = 18 }: { size?: number }) {
+  return (
+    <Text style={{ fontSize: size }} accessibilityLabel="Beğenme">
+      👎
+    </Text>
+  )
+}
+
+export function Brand({ children, size = 28 }: { children: ReactNode; size?: number }) {
+  return <Text style={[styles.brand, { fontSize: size }]}>{children}</Text>
+}
+
+export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+  return <View style={[styles.card, style]}>{children}</View>
+}
+
+export function Field({
+  label,
+  ...props
+}: TextInputProps & { label: string }) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        placeholderTextColor="#a89888"
+        style={[styles.input, props.multiline && styles.textarea]}
+        {...props}
+      />
+    </View>
+  )
+}
+
+export function PrimaryButton({
+  title,
+  onPress,
+  disabled,
+}: {
+  title: string
+  onPress: () => void
+  disabled?: boolean
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={[styles.primary, disabled && styles.disabled]}
+    >
+      <Text style={styles.primaryText}>{title}</Text>
+    </Pressable>
+  )
+}
+
+export function GhostButton({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={styles.ghost}>
+      <Text style={styles.ghostText}>{title}</Text>
+    </Pressable>
+  )
+}
+
+export function DangerButton({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={styles.danger}>
+      <Text style={styles.dangerText}>{title}</Text>
+    </Pressable>
+  )
+}
+
+export function SlotPicker({
+  value,
+  onChange,
+  counts,
+}: {
+  value: MealSlot
+  onChange: (slot: MealSlot) => void
+  counts?: Partial<Record<MealSlot, number>>
+}) {
+  return (
+    <View style={styles.slots}>
+      {SLOTS.map((s) => (
+        <Pressable
+          key={s.id}
+          onPress={() => onChange(s.id)}
+          style={[styles.slot, s.id === value && styles.slotOn]}
+        >
+          <Text style={styles.slotIco}>{s.icon}</Text>
+          <Text style={styles.slotLabel}>{s.label}</Text>
+          {counts ? <Text style={styles.slotHint}>{counts[s.id] ?? 0} yemek</Text> : null}
+        </Pressable>
+      ))}
+    </View>
+  )
+}
+
+export function Pill({
+  label,
+  on,
+  onPress,
+}: {
+  label: string
+  on?: boolean
+  onPress: () => void
+}) {
+  return (
+    <Pressable onPress={onPress} style={[styles.pill, on && styles.pillOn]}>
+      <Text style={[styles.pillText, on && styles.pillTextOn]}>{label}</Text>
+    </Pressable>
+  )
+}
+
+export const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  screenPad: {
+    paddingHorizontal: 18,
+    paddingBottom: 24,
+  },
+  brand: {
+    fontFamily: 'Georgia',
+    fontWeight: '700',
+    color: colors.ink,
+    letterSpacing: -0.4,
+  },
+  muted: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  sub: {
+    marginTop: 4,
+    color: colors.muted,
+    fontSize: 13,
+  },
+  card: {
+    backgroundColor: colors.paper,
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 12,
+  },
+  field: {
+    marginTop: 18,
+    gap: 8,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.muted,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    color: colors.ink,
+    fontSize: 16,
+  },
+  textarea: {
+    minHeight: 92,
+    textAlignVertical: 'top',
+  },
+  primary: {
+    backgroundColor: colors.accent,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  primaryText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  ghost: {
+    backgroundColor: colors.ghost,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  ghostText: {
+    color: colors.ink,
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  danger: {
+    backgroundColor: colors.dangerBg,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  dangerText: {
+    color: colors.danger,
+    fontWeight: '700',
+  },
+  disabled: {
+    opacity: 0.65,
+  },
+  slots: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  slot: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  slotOn: {
+    backgroundColor: colors.slotOn,
+  },
+  slotIco: {
+    fontSize: 22,
+  },
+  slotLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.ink,
+  },
+  slotHint: {
+    fontSize: 11,
+    color: colors.muted,
+    marginTop: 2,
+  },
+  pill: {
+    backgroundColor: '#efc93a',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#c4ae5a',
+  },
+  pillOn: {
+    backgroundColor: '#d9a400',
+  },
+  pillText: {
+    fontWeight: '700',
+    fontSize: 12,
+    color: '#6e5208',
+  },
+  pillTextOn: {
+    color: '#3d3000',
+    fontWeight: '800',
+  },
+  topbar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 18,
+  },
+  vote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    minWidth: 52,
+  },
+  voteOnLike: {
+    backgroundColor: '#d7ebe2',
+  },
+  voteOnDislike: {
+    backgroundColor: '#f3d6d0',
+  },
+  voteCount: {
+    fontWeight: '700',
+    color: colors.ink,
+  },
+  nav: {
+    flexDirection: 'row',
+    backgroundColor: colors.paper,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    paddingTop: 8,
+  },
+  navBtn: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  navIco: {
+    fontSize: 18,
+  },
+  navLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.muted,
+  },
+  navOn: {
+    color: colors.accent,
+  },
+  empty: {
+    color: colors.muted,
+    textAlign: 'center',
+    marginTop: 24,
+  },
+  error: {
+    marginTop: 12,
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  badge: {
+    backgroundColor: colors.ghost,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    overflow: 'hidden',
+    color: colors.ink,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  back: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: colors.ghost,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+})
