@@ -106,16 +106,19 @@ export const api = {
     clearToken()
     return request<{ ok: boolean }>('/api/logout', { method: 'POST' })
   },
-  deleteAccount: () => request<{ ok: boolean }>('/api/me', { method: 'DELETE' }),
+  deleteAccount: () => request<{ ok: boolean }>('/api/delete-account', { method: 'POST' }),
   addMeal: (meal: object) =>
     request<{ data: Catalog }>('/api/meals', { method: 'POST', body: JSON.stringify(meal) }),
   updateMeal: (meal: Meal) =>
-    request<{ data: Catalog }>(`/api/meals/${meal.id}`, {
-      method: 'PUT',
+    request<{ data: Catalog }>('/api/meal-update', {
+      method: 'POST',
       body: JSON.stringify(meal),
     }),
   deleteMeal: (id: string) =>
-    request<{ data: Catalog }>(`/api/meals/${id}`, { method: 'DELETE' }),
+    request<{ data: Catalog }>('/api/meal-delete', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
   rate: (mealId: string, stars: number) =>
     request<{ data: Catalog }>('/api/ratings', {
       method: 'POST',
@@ -142,13 +145,19 @@ export const api = {
       body: JSON.stringify({ id, value }),
     }),
   markSuggestion: (id: string) =>
-    request<{ data: Catalog }>(`/api/suggestions/${id}`, { method: 'PATCH' }),
+    request<{ data: Catalog }>('/api/suggestion-mark', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
   deleteSuggestion: (id: string) =>
-    request<{ data: Catalog }>(`/api/suggestions/${id}`, { method: 'DELETE' }),
+    request<{ data: Catalog }>('/api/suggestion-delete', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
   reset: () => request<{ data: Catalog }>('/api/reset', { method: 'POST' }),
   publishWeek: (start: string, published: boolean) =>
-    request<{ data: Catalog }>(`/api/weeks/${start}/publish`, {
+    request<{ data: Catalog }>('/api/week-publish', {
       method: 'POST',
-      body: JSON.stringify({ published }),
+      body: JSON.stringify({ start, published }),
     }),
 }

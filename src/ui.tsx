@@ -1,15 +1,85 @@
-import type { ReactNode } from 'react'
+import { createElement, type ReactNode } from 'react'
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type StyleProp,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native'
 import { SLOTS, type MealSlot } from './types'
 import { colors } from './theme'
+
+export function Hit({
+  onPress,
+  disabled,
+  style,
+  children,
+  label,
+}: {
+  onPress: () => void
+  disabled?: boolean
+  style?: StyleProp<ViewStyle>
+  children: ReactNode
+  label?: string
+}) {
+  const run = () => {
+    if (!disabled) onPress()
+  }
+  if (Platform.OS === 'web') {
+    const flat = StyleSheet.flatten(style) || {}
+    return createElement(
+      'button',
+      {
+        type: 'button',
+        disabled,
+        onClick: run,
+        'aria-label': label,
+        style: {
+          display: 'flex',
+          flexDirection: (flat.flexDirection as 'row' | 'column') || 'column',
+          alignItems: (flat.alignItems as string) || 'center',
+          justifyContent: (flat.justifyContent as string) || 'center',
+          gap: typeof flat.gap === 'number' ? `${flat.gap}px` : undefined,
+          background: (flat.backgroundColor as string) || 'transparent',
+          borderRadius: flat.borderRadius,
+          padding: flat.padding,
+          paddingTop: flat.paddingVertical ?? flat.paddingTop,
+          paddingBottom: flat.paddingVertical ?? flat.paddingBottom,
+          paddingLeft: flat.paddingHorizontal ?? flat.paddingLeft,
+          paddingRight: flat.paddingHorizontal ?? flat.paddingRight,
+          margin: 0,
+          borderWidth: flat.borderWidth ?? 0,
+          borderStyle: 'solid',
+          borderColor: (flat.borderColor as string) || 'transparent',
+          width: flat.width === '100%' || flat.flex === 1 ? '100%' : flat.width,
+          minWidth: flat.minWidth,
+          flex: flat.flex,
+          flexShrink: flat.flexShrink,
+          cursor: disabled ? 'default' : 'pointer',
+          opacity: disabled ? 0.65 : 1,
+          font: 'inherit',
+          color: 'inherit',
+        },
+      },
+      children,
+    )
+  }
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={run}
+      disabled={disabled}
+      style={[style, disabled && styles.disabled]}
+    >
+      {children}
+    </Pressable>
+  )
+}
 
 export function ThumbUp({ size = 18 }: { size?: number }) {
   return (
@@ -61,29 +131,25 @@ export function PrimaryButton({
   disabled?: boolean
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={[styles.primary, disabled && styles.disabled]}
-    >
+    <Hit onPress={onPress} disabled={disabled} style={styles.primary}>
       <Text style={styles.primaryText}>{title}</Text>
-    </Pressable>
+    </Hit>
   )
 }
 
 export function GhostButton({ title, onPress }: { title: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={styles.ghost}>
+    <Hit onPress={onPress} style={styles.ghost}>
       <Text style={styles.ghostText}>{title}</Text>
-    </Pressable>
+    </Hit>
   )
 }
 
 export function DangerButton({ title, onPress }: { title: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={styles.danger}>
+    <Hit onPress={onPress} style={styles.danger}>
       <Text style={styles.dangerText}>{title}</Text>
-    </Pressable>
+    </Hit>
   )
 }
 
@@ -99,15 +165,11 @@ export function SlotPicker({
   return (
     <View style={styles.slots}>
       {SLOTS.map((s) => (
-        <Pressable
-          key={s.id}
-          onPress={() => onChange(s.id)}
-          style={[styles.slot, s.id === value && styles.slotOn]}
-        >
+        <Hit key={s.id} onPress={() => onChange(s.id)} style={[styles.slot, s.id === value && styles.slotOn]}>
           <Text style={styles.slotIco}>{s.icon}</Text>
           <Text style={styles.slotLabel}>{s.label}</Text>
           {counts ? <Text style={styles.slotHint}>{counts[s.id] ?? 0} yemek</Text> : null}
-        </Pressable>
+        </Hit>
       ))}
     </View>
   )
@@ -123,9 +185,9 @@ export function Pill({
   onPress: () => void
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.pill, on && styles.pillOn]}>
+    <Hit onPress={onPress} style={[styles.pill, on && styles.pillOn]}>
       <Text style={[styles.pillText, on && styles.pillTextOn]}>{label}</Text>
-    </Pressable>
+    </Hit>
   )
 }
 

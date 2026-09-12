@@ -1,5 +1,5 @@
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { BackHandler, Pressable, ScrollView, Text, View } from 'react-native'
+import { BackHandler, ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StoreProvider, useStore } from './store'
 import type { Tab } from './types'
@@ -14,7 +14,7 @@ import {
   Suggest,
   Welcome,
 } from './screens'
-import { styles as ui } from './ui'
+import { Hit, styles as ui } from './ui'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -149,10 +149,10 @@ function PressNav({
   onPress: () => void
 }) {
   return (
-    <Pressable onPress={onPress} style={ui.navBtn}>
+    <Hit onPress={onPress} style={ui.navBtn} label={label}>
       <Text style={ui.navIco}>{ico}</Text>
       <Text style={[ui.navLabel, on && ui.navOn]}>{label}</Text>
-    </Pressable>
+    </Hit>
   )
 }
 

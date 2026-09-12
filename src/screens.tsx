@@ -32,6 +32,7 @@ import {
   DangerButton,
   Field,
   GhostButton,
+  Hit,
   Pill,
   PrimaryButton,
   SlotPicker,
@@ -40,9 +41,18 @@ import {
   styles as ui,
 } from './ui'
 
+function notify(title: string, message?: string) {
+  const text = message ? `${title}\n${message}` : title
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(text)
+    return
+  }
+  Alert.alert(title, message)
+}
+
 function sendVote(action: () => Promise<void>) {
   void action().catch((err) => {
-    Alert.alert('Oy kaydedilemedi', err instanceof Error ? err.message : 'Tekrar dene.')
+    notify('Oy kaydedilemedi', err instanceof Error ? err.message : 'Tekrar dene.')
   })
 }
 
@@ -61,7 +71,7 @@ function VoteButton({
 }) {
   const handle = () => {
     if (locked) {
-      Alert.alert('Kilitli', 'Geçmiş menü yalnızca görüntülenir.')
+      notify('Kilitli', 'Geçmiş menü yalnızca görüntülenir.')
       return
     }
     onPress()
@@ -207,7 +217,7 @@ export function Welcome() {
             })()
           }}
         />
-        <Pressable
+        <Hit
           onPress={() => {
             setScreen(isRegister ? 'login' : 'register')
             setError('')
@@ -216,7 +226,7 @@ export function Welcome() {
           <Text style={local.authSwitch}>
             {isRegister ? 'Hesabın var mı? Giriş yap' : 'Hesabın yok mu? Kayıt ol'}
           </Text>
-        </Pressable>
+        </Hit>
       </View>
     </ScrollView>
   )
@@ -278,7 +288,7 @@ export function Home({
             const open = openDay === date
             return (
               <Card key={date}>
-                <Pressable onPress={() => setOpenDay(open ? '' : date)} style={local.accHead}>
+                <Hit onPress={() => setOpenDay(open ? '' : date)} style={local.accHead}>
                   <View>
                     <Text style={local.h3}>
                       {weekdayLabel(date)} · {shortDate(date)}
@@ -288,7 +298,7 @@ export function Home({
                     </Text>
                   </View>
                   <Text style={local.chev}>{open ? '▴' : '▾'}</Text>
-                </Pressable>
+                </Hit>
                 {open ? (
                   <View style={local.accBody}>
                     {!live ? <Text style={ui.muted}>Bu hafta henüz yayınlanmadı.</Text> : null}
@@ -330,9 +340,9 @@ export function Home({
                           <Text style={local.h3}>{meal.name}</Text>
                           <Text style={ui.muted}>{meal.description}</Text>
                         </View>
-                        <Pressable onPress={() => onOpen(meal.id)} style={local.commentOpen}>
+                        <Hit onPress={() => onOpen(meal.id)} style={local.commentOpen}>
                           <Text style={local.commentOpenText}>{locked ? 'Yorumlar' : 'Detay'}</Text>
-                        </Pressable>
+                        </Hit>
                       </View>
                       <MealVotes mealId={meal.id} locked={locked} />
                     </View>
@@ -362,9 +372,9 @@ export function MealDetail({ mealId, onBack }: { mealId: string; onBack: () => v
   return (
     <>
       <View style={[ui.topbar, { alignItems: 'center' }]}>
-        <Pressable onPress={onBack} style={ui.back}>
+        <Hit onPress={onBack} style={ui.back}>
           <Text>←</Text>
-        </Pressable>
+        </Hit>
         <Text style={ui.badge}>{slot.label}</Text>
         <Text style={ui.badge}>{shortDate(meal.date)}</Text>
       </View>
@@ -437,9 +447,9 @@ export function AdminMealInfo({ mealId, onBack }: { mealId: string; onBack: () =
   return (
     <>
       <View style={[ui.topbar, { alignItems: 'center' }]}>
-        <Pressable onPress={onBack} style={ui.back}>
+        <Hit onPress={onBack} style={ui.back}>
           <Text>←</Text>
-        </Pressable>
+        </Hit>
         <Text style={ui.badge}>{slot.label}</Text>
         <Text style={ui.badge}>{shortDate(meal.date)}</Text>
       </View>
@@ -481,9 +491,9 @@ export function Suggest() {
           <Brand>Öneriler</Brand>
           <Text style={ui.sub}>Kullanıcıların önerdiği yemekler, beğeni sırasıyla.</Text>
         </View>
-        <Pressable onPress={() => setOpen(true)} style={local.addBtn}>
+        <Hit onPress={() => setOpen(true)} style={local.addBtn}>
           <Text style={local.addBtnText}>Yemek öner</Text>
-        </Pressable>
+        </Hit>
       </View>
       {ranked.length === 0 ? (
         <Text style={ui.empty}>Henüz önerilen yemek yok. İlkini sen ekle.</Text>
@@ -532,9 +542,9 @@ export function Suggest() {
       <Modal visible={open} animationType="slide" onRequestClose={closeModal}>
         <View style={[ui.screen, ui.screenPad, { paddingTop: 56 }]}>
           <View style={[ui.topbar, { alignItems: 'center' }]}>
-            <Pressable onPress={closeModal} style={ui.back}>
+            <Hit onPress={closeModal} style={ui.back}>
               <Text>←</Text>
-            </Pressable>
+            </Hit>
             <Brand size={22}>Yemek öner</Brand>
           </View>
           <Text style={ui.muted}>Menüde olmasını istediğin yemeği yaz. Herkes beğenebilir.</Text>
@@ -592,9 +602,23 @@ export function AdminSuggestions() {
             <Text style={ui.muted}>{s.text}</Text>
             <View style={ui.row}>
               {s.status === 'yeni' ? (
-                <GhostButton title="İncelendi" onPress={() => void markSuggestion(s.id)} />
+                <GhostButton
+                  title="İncelendi"
+                  onPress={() =>
+                    void markSuggestion(s.id).catch((err) =>
+                      notify('İşlem olmadı', err instanceof Error ? err.message : 'Tekrar dene.'),
+                    )
+                  }
+                />
               ) : null}
-              <DangerButton title="Sil" onPress={() => void deleteSuggestion(s.id)} />
+              <DangerButton
+                title="Sil"
+                onPress={() =>
+                  void deleteSuggestion(s.id).catch((err) =>
+                    notify('Silinemedi', err instanceof Error ? err.message : 'Tekrar dene.'),
+                  )
+                }
+              />
             </View>
           </Card>
         ))
@@ -696,7 +720,7 @@ export function AdminPanel({ onOpen }: { onOpen: (id: string) => void }) {
           const on = selectedDate === date
           const tone = isPastDate(date) ? 'past' : date === today ? 'today' : 'future'
           return (
-            <Pressable
+            <Hit
               key={date}
               onPress={() => {
                 setSelectedDate(date)
@@ -706,7 +730,7 @@ export function AdminPanel({ onOpen }: { onOpen: (id: string) => void }) {
             >
               <Text style={[local.dayText, on && { color: '#fff' }]}>{weekdayLabel(date).slice(0, 3)}</Text>
               <Text style={[local.daySmall, on && { color: '#fff' }]}>{shortDate(date)}</Text>
-            </Pressable>
+            </Hit>
           )
         })}
       </View>
@@ -766,10 +790,10 @@ export function AdminPanel({ onOpen }: { onOpen: (id: string) => void }) {
       />
       {list.map((meal) => (
         <Card key={meal.id}>
-          <Pressable onPress={() => onOpen(meal.id)}>
+          <Hit onPress={() => onOpen(meal.id)}>
             <Text style={local.h3}>{meal.name}</Text>
             <Text style={ui.muted}>{meal.description}</Text>
-          </Pressable>
+          </Hit>
           <View style={ui.row}>
             <GhostButton title="Düzenle" onPress={() => startEdit(meal)} />
             <DangerButton title="Sil" onPress={() => void deleteMeal(meal.id)} />
@@ -824,9 +848,9 @@ export function Profile() {
             @{username} · {isAdmin ? 'Yönetici' : 'Kullanıcı'}
           </Text>
         </View>
-        <Pressable onPress={() => void logout()} style={local.logout}>
+        <Hit onPress={() => void logout()} style={local.logout}>
           <Text style={local.logoutText}>Çıkış yap</Text>
-        </Pressable>
+        </Hit>
       </View>
       {isAdmin ? (
         <>
@@ -848,10 +872,10 @@ export function Profile() {
                 const open = openUser === u.id
                 return (
                   <Card key={u.id}>
-                    <Pressable onPress={() => setOpenUser(open ? '' : u.id)} style={local.accHead}>
+                    <Hit onPress={() => setOpenUser(open ? '' : u.id)} style={local.accHead}>
                       <Text style={local.h3}>{u.username}</Text>
                       <Text style={local.chev}>{open ? '▴' : '▾'}</Text>
-                    </Pressable>
+                    </Hit>
                     {open ? (
                       <View style={local.accBody}>
                         {rows.length === 0 ? (
@@ -929,17 +953,17 @@ export function Profile() {
             <DangerButton
               title="Hesabı sil"
               onPress={() => {
+                const go = () =>
+                  void deleteAccount().then((err) => {
+                    if (err) setDeleteError(err)
+                  })
+                if (Platform.OS === 'web') {
+                  if (window.confirm('Hesabın silinsin mi? Bu işlem geri alınamaz.')) go()
+                  return
+                }
                 Alert.alert('Hesabı sil', 'Hesabın silinsin mi? Bu işlem geri alınamaz.', [
                   { text: 'Vazgeç', style: 'cancel' },
-                  {
-                    text: 'Sil',
-                    style: 'destructive',
-                    onPress: () => {
-                      void deleteAccount().then((err) => {
-                        if (err) setDeleteError(err)
-                      })
-                    },
-                  },
+                  { text: 'Sil', style: 'destructive', onPress: go },
                 ])
               }}
             />

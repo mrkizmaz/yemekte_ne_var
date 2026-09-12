@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
 import { comments, buildMeals, mealVotes, publishedWeeksForSeed, ratings, suggestions } from './seed-data.mjs'
-import { isoDate, isPublishedDate } from './dates.mjs'
+import { isoDate, isPublishedDate, weekStart } from './dates.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const dataDir = process.env.VERCEL ? '/tmp/ne-var-data' : join(root, '..', 'data')
@@ -87,7 +87,15 @@ export function saveDb(db) {
 
 export async function ensureDb() {
   const existing = loadDb()
-  if (existing?.users?.length) return existing
+  if (existing?.users?.length) {
+    const week = weekStart()
+    const weeks = existing.publishedWeeks || []
+    if (!weeks.includes(week)) {
+      existing.publishedWeeks = [...new Set([...weeks, week, ...publishedWeeksForSeed()])]
+      saveDb(existing)
+    }
+    return existing
+  }
   const fresh = await createEmptyDb()
   saveDb(fresh)
   return fresh

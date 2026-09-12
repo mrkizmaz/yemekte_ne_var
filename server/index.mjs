@@ -15,7 +15,7 @@ import {
   publicUser,
   saveDb,
 } from './db.mjs'
-import { isoDate, isPastDate, isPublishedDate, weekStart } from './dates.mjs'
+import { isoDate, isPastDate, weekStart } from './dates.mjs'
 
 const PORT = Number(process.env.PORT || 3001)
 const JWT_SECRET = process.env.JWT_SECRET || 'ne-var-dev-secret-change-me'
@@ -36,13 +36,6 @@ function assertCanInteract(res, meal, user) {
   if (isPastDate(meal.date)) {
     res.status(403).json({ error: 'Geçmiş menü yalnızca görüntülenir.' })
     return false
-  }
-  if (user?.role !== 'admin') {
-    const db = loadDb()
-    if (!isPublishedDate(meal.date, db.publishedWeeks || [])) {
-      res.status(403).json({ error: 'Bu menü henüz yayınlanmadı.' })
-      return false
-    }
   }
   return true
 }
@@ -207,6 +200,23 @@ app.post('/api/logout', (_req, res) => {
   res.json({ ok: true })
 })
 
+app.post('/api/delete-account', requireAuth, (req, res) => {
+  if (req.user.role === 'admin' || req.user.username === ADMIN_USERNAME) {
+    res.status(403).json({ error: 'Yönetici hesabı silinemez.' })
+    return
+  }
+  const db = loadDb()
+  const who = req.user.username
+  db.users = (db.users || []).filter((u) => u.id !== req.user.id)
+  db.ratings = (db.ratings || []).filter((r) => r.userName !== who)
+  db.comments = (db.comments || []).filter((c) => c.userName !== who)
+  db.mealVotes = (db.mealVotes || []).filter((v) => v.userName !== who)
+  db.suggestions = (db.suggestions || []).filter((s) => s.userName !== who)
+  saveDb(db)
+  res.clearCookie(TOKEN_COOKIE)
+  res.json({ ok: true })
+})
+
 app.delete('/api/me', requireAuth, (req, res) => {
   if (req.user.role === 'admin' || req.user.username === ADMIN_USERNAME) {
     res.status(403).json({ error: 'Yönetici hesabı silinemez.' })
@@ -267,6 +277,29 @@ app.post('/api/meals', requireAdmin, (req, res) => {
   res.status(201).json({ data: catalog(db, req.user) })
 })
 
+app.post('/api/meal-update', requireAdmin, (req, res) => {
+  const id = String(req.body?.id || '')
+  const db = loadDb()
+  const idx = db.meals.findIndex((m) => m.id === id)
+  if (idx < 0) {
+    res.status(404).json({ error: 'Yemek bulunamadı.' })
+    return
+  }
+  db.meals[idx] = {
+    ...db.meals[idx],
+    date: String(req.body.date || db.meals[idx].date || isoDate()),
+    slot: req.body.slot,
+    name: String(req.body.name || '').trim(),
+    description: String(req.body.description || '').trim(),
+    ingredients: String(req.body.ingredients || '').trim(),
+    emoji: String(req.body.emoji || '🍽️').trim() || '🍽️',
+    recipe: String(req.body.recipe || db.meals[idx].recipe || '').trim(),
+    id,
+  }
+  saveDb(db)
+  res.json({ data: catalog(db, req.user) })
+})
+
 app.put('/api/meals/:id', requireAdmin, (req, res) => {
   const db = loadDb()
   const idx = db.meals.findIndex((m) => m.id === req.params.id)
@@ -285,6 +318,17 @@ app.put('/api/meals/:id', requireAdmin, (req, res) => {
     recipe: String(req.body.recipe || db.meals[idx].recipe || '').trim(),
     id: req.params.id,
   }
+  saveDb(db)
+  res.json({ data: catalog(db, req.user) })
+})
+
+app.post('/api/meal-delete', requireAdmin, (req, res) => {
+  const id = String(req.body?.id || '')
+  const db = loadDb()
+  db.meals = db.meals.filter((m) => m.id !== id)
+  db.ratings = db.ratings.filter((r) => r.mealId !== id)
+  db.comments = db.comments.filter((c) => c.mealId !== id)
+  db.mealVotes = (db.mealVotes || []).filter((v) => v.mealId !== id)
   saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
@@ -418,6 +462,18 @@ app.post('/api/suggestions/:id/vote', requireAuth, (req, res) => {
   applySuggestionVote(req, res, req.params.id)
 })
 
+app.post('/api/suggestion-mark', requireAdmin, (req, res) => {
+  const db = loadDb()
+  const item = db.suggestions.find((s) => s.id === String(req.body?.id || ''))
+  if (!item) {
+    res.status(404).json({ error: 'Öneri bulunamadı.' })
+    return
+  }
+  item.status = 'incelendi'
+  saveDb(db)
+  res.json({ data: catalog(db, req.user) })
+})
+
 app.patch('/api/suggestions/:id', requireAdmin, (req, res) => {
   const db = loadDb()
   const item = db.suggestions.find((s) => s.id === req.params.id)
@@ -430,9 +486,29 @@ app.patch('/api/suggestions/:id', requireAdmin, (req, res) => {
   res.json({ data: catalog(db, req.user) })
 })
 
+app.post('/api/suggestion-delete', requireAdmin, (req, res) => {
+  const id = String(req.body?.id || '')
+  const db = loadDb()
+  db.suggestions = db.suggestions.filter((s) => s.id !== id)
+  saveDb(db)
+  res.json({ data: catalog(db, req.user) })
+})
+
 app.delete('/api/suggestions/:id', requireAdmin, (req, res) => {
   const db = loadDb()
   db.suggestions = db.suggestions.filter((s) => s.id !== req.params.id)
+  saveDb(db)
+  res.json({ data: catalog(db, req.user) })
+})
+
+app.post('/api/week-publish', requireAdmin, (req, res) => {
+  const start = weekStart(String(req.body?.start || isoDate()))
+  const on = req.body.published !== false
+  const db = loadDb()
+  const set = new Set(db.publishedWeeks || [])
+  if (on) set.add(start)
+  else set.delete(start)
+  db.publishedWeeks = [...set]
   saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
