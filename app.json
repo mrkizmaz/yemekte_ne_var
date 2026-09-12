@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Ne Var?",
+    "slug": "ne-var",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#f4ebe0"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nevar.app"
+    },
+    "android": {
+      "package": "com.nevar.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#f4ebe0"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "Ne Var?"
+    }
+  }
+}

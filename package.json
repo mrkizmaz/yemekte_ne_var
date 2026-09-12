@@ -1,0 +1,39 @@
+{
+  "name": "ne-var",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently -k \"npm run server\" \"npm run client\"",
+    "client": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "server": "node server/index.mjs",
+    "start": "node server/index.mjs",
+    "build": "expo export -p web"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~5.0.5",
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "expo": "~53.0.22",
+    "expo-constants": "~17.1.7",
+    "expo-status-bar": "~2.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-native": "0.79.5",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-web": "^0.20.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.0.10",
+    "concurrently": "^9.2.1",
+    "typescript": "~5.8.3"
+  }
+}
