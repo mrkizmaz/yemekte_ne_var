@@ -48,10 +48,8 @@ function defaultApiBase() {
   return 'http://127.0.0.1:3001'
 }
 
-const API_BASE = defaultApiBase()
-
 function apiUrl(path: string) {
-  return `${API_BASE}${path}`
+  return `${defaultApiBase()}${path}`
 }
 
 export async function hydrateToken() {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { createElement, useMemo, useState, type ReactNode } from 'react'
 import {
   Alert,
   Image,
@@ -46,8 +46,62 @@ function sendVote(action: () => Promise<void>) {
   })
 }
 
-function tapProps(onPress: () => void) {
-  return Platform.OS === 'web' ? { onClick: onPress } : { onPress }
+function VoteButton({
+  label,
+  locked,
+  active,
+  onPress,
+  children,
+}: {
+  label: string
+  locked: boolean
+  active?: boolean
+  onPress: () => void
+  children: ReactNode
+}) {
+  const handle = () => {
+    if (locked) {
+      Alert.alert('Kilitli', 'Geçmiş menü yalnızca görüntülenir.')
+      return
+    }
+    onPress()
+  }
+
+  if (Platform.OS === 'web') {
+    return createElement(
+      'button',
+      {
+        type: 'button',
+        onClick: handle,
+        'aria-label': label,
+        style: {
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: '6px',
+          background: active ? (label === 'Beğen' ? '#d7ebe2' : '#f3d6d0') : '#fff',
+          borderRadius: 14,
+          padding: '8px 10px',
+          minWidth: 52,
+          border: '1px solid #eadfd2',
+          cursor: 'pointer',
+          font: 'inherit',
+        },
+      },
+      children,
+    )
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={handle}
+      style={[ui.vote, active && (label === 'Beğen' ? ui.voteOnLike : ui.voteOnDislike)]}
+    >
+      {children}
+    </Pressable>
+  )
 }
 
 export function MealVotes({ mealId, locked }: { mealId: string; locked: boolean }) {
@@ -58,30 +112,28 @@ export function MealVotes({ mealId, locked }: { mealId: string; locked: boolean 
 
   return (
     <View style={local.voteRow}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Beğen"
-        disabled={locked}
-        {...tapProps(() => sendVote(() => voteMeal(mealId, 'like')))}
-        style={[ui.vote, mine === 'like' && ui.voteOnLike, locked && ui.disabled]}
+      <VoteButton
+        label="Beğen"
+        locked={locked}
+        active={mine === 'like'}
+        onPress={() => sendVote(() => voteMeal(mealId, 'like'))}
       >
         <ThumbUp size={16} />
         <Text pointerEvents="none" style={ui.voteCount}>
           {likes}
         </Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Beğenme"
-        disabled={locked}
-        {...tapProps(() => sendVote(() => voteMeal(mealId, 'dislike')))}
-        style={[ui.vote, mine === 'dislike' && ui.voteOnDislike, locked && ui.disabled]}
+      </VoteButton>
+      <VoteButton
+        label="Beğenme"
+        locked={locked}
+        active={mine === 'dislike'}
+        onPress={() => sendVote(() => voteMeal(mealId, 'dislike'))}
       >
         <ThumbDown size={16} />
         <Text pointerEvents="none" style={ui.voteCount}>
           {dislikes}
         </Text>
-      </Pressable>
+      </VoteButton>
     </View>
   )
 }
@@ -450,28 +502,28 @@ export function Suggest() {
                 </View>
               </View>
               <View style={local.voteRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Beğen"
-                  {...tapProps(() => sendVote(() => voteSuggestion(s.id, 'like')))}
-                  style={[ui.vote, mine === 'like' && ui.voteOnLike]}
+                <VoteButton
+                  label="Beğen"
+                  locked={false}
+                  active={mine === 'like'}
+                  onPress={() => sendVote(() => voteSuggestion(s.id, 'like'))}
                 >
                   <ThumbUp />
                   <Text pointerEvents="none" style={ui.voteCount}>
                     {likesOf(s)}
                   </Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Beğenme"
-                  {...tapProps(() => sendVote(() => voteSuggestion(s.id, 'dislike')))}
-                  style={[ui.vote, mine === 'dislike' && ui.voteOnDislike]}
+                </VoteButton>
+                <VoteButton
+                  label="Beğenme"
+                  locked={false}
+                  active={mine === 'dislike'}
+                  onPress={() => sendVote(() => voteSuggestion(s.id, 'dislike'))}
                 >
                   <ThumbDown />
                   <Text pointerEvents="none" style={ui.voteCount}>
                     {dislikesOf(s)}
                   </Text>
-                </Pressable>
+                </VoteButton>
               </View>
             </Card>
           )

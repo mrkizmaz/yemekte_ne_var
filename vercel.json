@@ -5,6 +5,11 @@
   "installCommand": "npm install",
   "framework": null,
   "cleanUrls": false,
+  "functions": {
+    "api/**/*.js": {
+      "includeFiles": "server/**"
+    }
+  },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/" }
   ]
