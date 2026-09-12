@@ -5,7 +5,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -155,7 +154,7 @@ export function Welcome() {
   const isRegister = screen === 'register'
 
   return (
-    <ScrollView contentContainerStyle={local.welcome} keyboardShouldPersistTaps="handled">
+    <View style={local.welcome}>
       <View style={local.welcomeBrand}>
         <View style={local.logoWrap}>
           <Image
@@ -229,7 +228,7 @@ export function Welcome() {
           </Text>
         </Hit>
       </View>
-    </ScrollView>
+    </View>
   )
 }
 
@@ -987,12 +986,13 @@ export function Profile() {
 
 const local = StyleSheet.create({
   welcome: {
-    flexGrow: 1,
+    flex: 1,
+    overflow: 'hidden',
     justifyContent: 'flex-start',
     paddingHorizontal: 24,
-    paddingTop: 80,
-    paddingBottom: 32,
-    gap: 20,
+    paddingTop: 72,
+    paddingBottom: 16,
+    gap: 16,
   },
   welcomeBrand: {
     width: '100%',
@@ -1000,21 +1000,21 @@ const local = StyleSheet.create({
   },
   welcomeHead: {
     width: '100%',
-    height: 112,
+    height: 100,
     alignItems: 'center',
   },
   welcomeTitle: {
-    height: 46,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },
   welcomeLead: {
-    marginTop: 8,
-    height: 58,
+    marginTop: 6,
+    height: 50,
     textAlign: 'center',
     color: colors.muted,
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 18,
   },
   welcomeForm: {
     width: '100%',
@@ -1025,10 +1025,10 @@ const local = StyleSheet.create({
     maxWidth: 220,
     backgroundColor: '#fff',
     borderRadius: 28,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    marginTop: 8,
-    marginBottom: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 2,
     shadowColor: '#3d2a1c',
     shadowOpacity: 0.12,
     shadowRadius: 18,
@@ -1037,7 +1037,7 @@ const local = StyleSheet.create({
   },
   logo: {
     width: '100%',
-    height: 148,
+    height: 128,
   },
   authSwitch: {
     marginTop: 12,

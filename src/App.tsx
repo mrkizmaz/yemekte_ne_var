@@ -97,7 +97,7 @@ function AppShell() {
 
   if (!userName) {
     return (
-      <View style={[ui.screen, { paddingTop: insets.top }]}>
+      <View style={[ui.screen, { paddingTop: insets.top, overflow: 'hidden' }]}>
         <Welcome />
         <LanguageSwitcher top={8} right={12} />
       </View>
