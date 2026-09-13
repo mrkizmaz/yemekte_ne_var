@@ -10,11 +10,22 @@ Bu proje Vercel’de **web arayüzü + API** olarak yayınlanır. Daha önce ça
 4. **Environment Variables** ekle:
    - `JWT_SECRET` = uzun rastgele bir metin
    - `NODE_ENV` = `production`
+   - `UPSTASH_REDIS_REST_URL` = Upstash Redis REST URL
+   - `UPSTASH_REDIS_REST_TOKEN` = Upstash Redis REST token
 5. **Deploy**.
 
 Bittiğinde adres `https://proje-adin.vercel.app` olur. Giriş: `admin` / `Admin123`.
 
-Not: Vercel’de `db.json` dosyası kalıcı değildir. Sunucusuz fonksiyon soğuyunca menü/oy verisi seed’e dönebilir. Kalıcı veri için Railway / Render gibi sürekli açık bir sunucu daha uygundur.
+## Veriler silinmesin (zorunlu)
+
+Vercel sunucusuz çalışır; dosyaya yazılan menü/oy **gece silinir**. Kalıcı olması için ücretsiz [Upstash Redis](https://console.upstash.com/) gerekir:
+
+1. Upstash’te hesap aç → **Create Database** → Redis, bölge **Europe** (veya sana yakın).
+2. **REST API** bölümünden `UPSTASH_REDIS_REST_URL` ve `UPSTASH_REDIS_REST_TOKEN` kopyala.
+3. Vercel → projen → **Settings → Environment Variables** → ikisini de **Production**’a ekle.
+4. **Deployments** → son deploy → **Redeploy**.
+
+`https://senin-siten.vercel.app/api/health` cevabında `"persistent": true` görünmeli. `false` ise anahtarlar eklenmemiş demektir.
 
 Yemek menüsü uygulaması artık **Expo + React Native** istemci ve mevcut **Express API** ile çalışır.
 

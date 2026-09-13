@@ -10,6 +10,7 @@ import {
   createId,
   emptyCatalog,
   ensureDb,
+  hasRemoteStore,
   loadDb,
   publicData,
   publicUser,
@@ -81,6 +82,20 @@ app.use((req, res, next) => {
   express.json({ limit: '200kb' })(req, res, next)
 })
 app.use(cookieParser())
+app.use(async (req, res, next) => {
+  const path = String(req.originalUrl || req.url || req.path || '')
+  if (!path.includes('/api') || req.method === 'OPTIONS') {
+    next()
+    return
+  }
+  try {
+    await ensureDb()
+    next()
+  } catch (error) {
+    console.error('ensureDb', error)
+    res.status(500).json({ error: err(req, 'serverError') })
+  }
+})
 
 function signToken(user) {
   return jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
@@ -140,7 +155,7 @@ function validPassword(password) {
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true })
+  res.json({ ok: true, persistent: hasRemoteStore() })
 })
 
 app.post('/api/register', async (req, res) => {
@@ -174,7 +189,7 @@ app.post('/api/register', async (req, res) => {
     role: 'user',
   }
   db.users.push(user)
-  saveDb(db)
+  await saveDb(db)
   const token = signToken(user)
   setAuthCookie(res, token)
   res.status(201).json({ user: publicUser(user), data: catalog(db, user), token })
@@ -201,7 +216,7 @@ app.post('/api/logout', (_req, res) => {
   res.json({ ok: true })
 })
 
-app.post('/api/delete-account', requireAuth, (req, res) => {
+app.post('/api/delete-account', requireAuth, async (req, res) => {
   if (req.user.role === 'admin' || req.user.username === ADMIN_USERNAME) {
     res.status(403).json({ error: err(req, 'adminUndeletable') })
     return
@@ -213,12 +228,12 @@ app.post('/api/delete-account', requireAuth, (req, res) => {
   db.comments = (db.comments || []).filter((c) => c.userName !== who)
   db.mealVotes = (db.mealVotes || []).filter((v) => v.userName !== who)
   db.suggestions = (db.suggestions || []).filter((s) => s.userName !== who)
-  saveDb(db)
+  await saveDb(db)
   res.clearCookie(TOKEN_COOKIE)
   res.json({ ok: true })
 })
 
-app.delete('/api/me', requireAuth, (req, res) => {
+app.delete('/api/me', requireAuth, async (req, res) => {
   if (req.user.role === 'admin' || req.user.username === ADMIN_USERNAME) {
     res.status(403).json({ error: err(req, 'adminUndeletable') })
     return
@@ -230,17 +245,17 @@ app.delete('/api/me', requireAuth, (req, res) => {
   db.comments = (db.comments || []).filter((c) => c.userName !== who)
   db.mealVotes = (db.mealVotes || []).filter((v) => v.userName !== who)
   db.suggestions = (db.suggestions || []).filter((s) => s.userName !== who)
-  saveDb(db)
+  await saveDb(db)
   res.clearCookie(TOKEN_COOKIE)
   res.json({ ok: true })
 })
 
-app.get('/api/me', requireAuth, (req, res) => {
+app.get('/api/me', requireAuth, async (req, res) => {
   const db = loadDb()
   res.json({ user: publicUser(req.user), data: catalog(db, req.user) })
 })
 
-app.patch('/api/me', requireAuth, (req, res) => {
+app.patch('/api/me', requireAuth, async (req, res) => {
   const displayName = String(req.body?.displayName || '').trim()
   if (displayName.length < 2) {
     res.status(400).json({ error: err(req, 'displayNameShort') })
@@ -253,11 +268,11 @@ app.patch('/api/me', requireAuth, (req, res) => {
     return
   }
   user.displayName = displayName
-  saveDb(db)
+  await saveDb(db)
   res.json({ user: publicUser(user), data: catalog(db, req.user) })
 })
 
-app.post('/api/meals', requireAdmin, (req, res) => {
+app.post('/api/meals', requireAdmin, async (req, res) => {
   const db = loadDb()
   const meal = {
     id: createId(),
@@ -274,11 +289,11 @@ app.post('/api/meals', requireAdmin, (req, res) => {
     return
   }
   db.meals.unshift(meal)
-  saveDb(db)
+  await saveDb(db)
   res.status(201).json({ data: catalog(db, req.user) })
 })
 
-app.post('/api/meal-update', requireAdmin, (req, res) => {
+app.post('/api/meal-update', requireAdmin, async (req, res) => {
   const id = String(req.body?.id || '')
   const db = loadDb()
   const idx = db.meals.findIndex((m) => m.id === id)
@@ -297,11 +312,11 @@ app.post('/api/meal-update', requireAdmin, (req, res) => {
     recipe: String(req.body.recipe || db.meals[idx].recipe || '').trim(),
     id,
   }
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.put('/api/meals/:id', requireAdmin, (req, res) => {
+app.put('/api/meals/:id', requireAdmin, async (req, res) => {
   const db = loadDb()
   const idx = db.meals.findIndex((m) => m.id === req.params.id)
   if (idx < 0) {
@@ -319,32 +334,32 @@ app.put('/api/meals/:id', requireAdmin, (req, res) => {
     recipe: String(req.body.recipe || db.meals[idx].recipe || '').trim(),
     id: req.params.id,
   }
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.post('/api/meal-delete', requireAdmin, (req, res) => {
+app.post('/api/meal-delete', requireAdmin, async (req, res) => {
   const id = String(req.body?.id || '')
   const db = loadDb()
   db.meals = db.meals.filter((m) => m.id !== id)
   db.ratings = db.ratings.filter((r) => r.mealId !== id)
   db.comments = db.comments.filter((c) => c.mealId !== id)
   db.mealVotes = (db.mealVotes || []).filter((v) => v.mealId !== id)
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.delete('/api/meals/:id', requireAdmin, (req, res) => {
+app.delete('/api/meals/:id', requireAdmin, async (req, res) => {
   const db = loadDb()
   db.meals = db.meals.filter((m) => m.id !== req.params.id)
   db.ratings = db.ratings.filter((r) => r.mealId !== req.params.id)
   db.comments = db.comments.filter((c) => c.mealId !== req.params.id)
   db.mealVotes = (db.mealVotes || []).filter((v) => v.mealId !== req.params.id)
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-function applyMealVote(req, res, mealId) {
+async function applyMealVote(req, res, mealId) {
   const value = req.body?.value
   if (value !== 'like' && value !== 'dislike') {
     res.status(400).json({ error: err(req, 'badVote') })
@@ -363,19 +378,19 @@ function applyMealVote(req, res, mealId) {
   } else {
     db.mealVotes.push({ id: createId(), mealId: meal.id, userName: who, value })
   }
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 }
 
-app.post('/api/vote', requireAuth, (req, res) => {
-  applyMealVote(req, res, String(req.body?.mealId || ''))
+app.post('/api/vote', requireAuth, async (req, res) => {
+  await applyMealVote(req, res, String(req.body?.mealId || ''))
 })
 
-app.post('/api/meals/:id/vote', requireAuth, (req, res) => {
-  applyMealVote(req, res, req.params.id)
+app.post('/api/meals/:id/vote', requireAuth, async (req, res) => {
+  await applyMealVote(req, res, req.params.id)
 })
 
-app.post('/api/ratings', requireAuth, (req, res) => {
+app.post('/api/ratings', requireAuth, async (req, res) => {
   const stars = Number(req.body.stars)
   const mealId = String(req.body.mealId || '')
   if (!mealId || stars < 1 || stars > 5) {
@@ -389,11 +404,11 @@ app.post('/api/ratings', requireAuth, (req, res) => {
   const existing = db.ratings.find((r) => r.mealId === mealId && r.userName === userName)
   if (existing) existing.stars = stars
   else db.ratings.push({ id: createId(), mealId, userName, stars })
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.post('/api/comments', requireAuth, (req, res) => {
+app.post('/api/comments', requireAuth, async (req, res) => {
   const text = String(req.body.text || '').trim()
   const mealId = String(req.body.mealId || '')
   if (!text || !mealId) {
@@ -410,11 +425,11 @@ app.post('/api/comments', requireAuth, (req, res) => {
     text,
     createdAt: Date.now(),
   })
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.post('/api/suggestions', requireAuth, (req, res) => {
+app.post('/api/suggestions', requireAuth, async (req, res) => {
   const text = String(req.body.text || '').trim()
   const slot = req.body.slot
   if (!text || !['kahvalti', 'ogle', 'aksam'].includes(slot)) {
@@ -431,11 +446,11 @@ app.post('/api/suggestions', requireAuth, (req, res) => {
     status: 'yeni',
     votes: {},
   })
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-function applySuggestionVote(req, res, suggestionId) {
+async function applySuggestionVote(req, res, suggestionId) {
   const value = req.body?.value
   if (value !== 'like' && value !== 'dislike') {
     res.status(400).json({ error: err(req, 'badLike') })
@@ -451,19 +466,19 @@ function applySuggestionVote(req, res, suggestionId) {
   const who = req.user.username
   if (item.votes[who] === value) delete item.votes[who]
   else item.votes[who] = value
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 }
 
-app.post('/api/suggestion-vote', requireAuth, (req, res) => {
-  applySuggestionVote(req, res, String(req.body?.id || req.body?.suggestionId || ''))
+app.post('/api/suggestion-vote', requireAuth, async (req, res) => {
+  await applySuggestionVote(req, res, String(req.body?.id || req.body?.suggestionId || ''))
 })
 
-app.post('/api/suggestions/:id/vote', requireAuth, (req, res) => {
-  applySuggestionVote(req, res, req.params.id)
+app.post('/api/suggestions/:id/vote', requireAuth, async (req, res) => {
+  await applySuggestionVote(req, res, req.params.id)
 })
 
-app.post('/api/suggestion-mark', requireAdmin, (req, res) => {
+app.post('/api/suggestion-mark', requireAdmin, async (req, res) => {
   const db = loadDb()
   const item = db.suggestions.find((s) => s.id === String(req.body?.id || ''))
   if (!item) {
@@ -471,11 +486,11 @@ app.post('/api/suggestion-mark', requireAdmin, (req, res) => {
     return
   }
   item.status = 'incelendi'
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.patch('/api/suggestions/:id', requireAdmin, (req, res) => {
+app.patch('/api/suggestions/:id', requireAdmin, async (req, res) => {
   const db = loadDb()
   const item = db.suggestions.find((s) => s.id === req.params.id)
   if (!item) {
@@ -483,26 +498,26 @@ app.patch('/api/suggestions/:id', requireAdmin, (req, res) => {
     return
   }
   item.status = 'incelendi'
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.post('/api/suggestion-delete', requireAdmin, (req, res) => {
+app.post('/api/suggestion-delete', requireAdmin, async (req, res) => {
   const id = String(req.body?.id || '')
   const db = loadDb()
   db.suggestions = db.suggestions.filter((s) => s.id !== id)
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.delete('/api/suggestions/:id', requireAdmin, (req, res) => {
+app.delete('/api/suggestions/:id', requireAdmin, async (req, res) => {
   const db = loadDb()
   db.suggestions = db.suggestions.filter((s) => s.id !== req.params.id)
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.post('/api/week-publish', requireAdmin, (req, res) => {
+app.post('/api/week-publish', requireAdmin, async (req, res) => {
   const start = weekStart(String(req.body?.start || isoDate()))
   const on = req.body.published !== false
   const db = loadDb()
@@ -510,11 +525,11 @@ app.post('/api/week-publish', requireAdmin, (req, res) => {
   if (on) set.add(start)
   else set.delete(start)
   db.publishedWeeks = [...set]
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.post('/api/weeks/:start/publish', requireAdmin, (req, res) => {
+app.post('/api/weeks/:start/publish', requireAdmin, async (req, res) => {
   const start = weekStart(String(req.params.start || isoDate()))
   const on = req.body.published !== false
   const db = loadDb()
@@ -522,11 +537,11 @@ app.post('/api/weeks/:start/publish', requireAdmin, (req, res) => {
   if (on) set.add(start)
   else set.delete(start)
   db.publishedWeeks = [...set]
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 
-app.post('/api/reset', requireAdmin, (req, res) => {
+app.post('/api/reset', requireAdmin, async (req, res) => {
   const db = loadDb()
   const fresh = emptyCatalog()
   db.meals = fresh.meals
@@ -535,7 +550,7 @@ app.post('/api/reset', requireAdmin, (req, res) => {
   db.mealVotes = fresh.mealVotes
   db.suggestions = fresh.suggestions
   db.publishedWeeks = fresh.publishedWeeks
-  saveDb(db)
+  await saveDb(db)
   res.json({ data: catalog(db, req.user) })
 })
 

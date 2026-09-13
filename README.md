@@ -13,4 +13,6 @@ Tarayıcı: http://localhost:5173/
 
 **Kullanıcı:** Kayıt ol → kendi kullanıcı adı ve şifren. `admin` adı alınamaz.
 
-API: http://localhost:3001 — veriler `data/db.json` dosyasında, şifreler hash’li saklanır.
+API: http://localhost:3001 — yerelde veriler `data/db.json` dosyasında, şifreler hash’li saklanır.
+
+Vercel’de verinin kalıcı olması için Upstash Redis gerekir. Adımlar: `STORE.md`.

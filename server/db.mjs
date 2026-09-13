@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
 import { comments, buildMeals, mealVotes, publishedWeeksForSeed, ratings, suggestions } from './seed-data.mjs'
 import { isoDate, isPublishedDate, weekStart } from './dates.mjs'
+import { hasRemoteStore, readRemoteDb, writeRemoteDb } from './persist.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const dataDir = process.env.VERCEL ? '/tmp/ne-var-data' : join(root, '..', 'data')
@@ -63,41 +64,71 @@ function migrate(db) {
   return db
 }
 
-export function loadDb() {
-  if (cache) return cache
+function readLocalFile() {
   try {
-    cache = migrate(JSON.parse(readFileSync(dbPath, 'utf8')))
-    writeFileSync(dbPath, JSON.stringify(cache, null, 2))
-    return cache
+    return migrate(JSON.parse(readFileSync(dbPath, 'utf8')))
   } catch {
     return null
   }
 }
 
-export function saveDb(db) {
+function writeLocalFile(db) {
+  mkdirSync(dataDir, { recursive: true })
+  writeFileSync(dbPath, JSON.stringify(db, null, 2))
+}
+
+export function loadDb() {
+  return cache
+}
+
+export async function saveDb(db) {
   cache = db
-  try {
-    mkdirSync(dataDir, { recursive: true })
-    writeFileSync(dbPath, JSON.stringify(db, null, 2))
-  } catch (err) {
-    if (process.env.VERCEL) return
-    throw err
+  if (hasRemoteStore()) {
+    await writeRemoteDb(db)
+    return
   }
+  if (process.env.VERCEL) {
+    console.warn('Kalıcı veri yok: UPSTASH_REDIS_REST_URL ve UPSTASH_REDIS_REST_TOKEN ekle.')
+    try {
+      writeLocalFile(db)
+    } catch {
+      // /tmp dolu veya yazılamaz
+    }
+    return
+  }
+  writeLocalFile(db)
 }
 
 export async function ensureDb() {
-  const existing = loadDb()
+  if (hasRemoteStore()) {
+    const remote = await readRemoteDb()
+    if (remote?.users?.length) {
+      cache = migrate(remote)
+      return cache
+    }
+    const fresh = await createEmptyDb()
+    await saveDb(fresh)
+    return fresh
+  }
+
+  if (process.env.VERCEL) {
+    console.warn('Kalıcı veri yok: Vercel /tmp gece silinir. Upstash Redis ekle.')
+  }
+
+  if (cache?.users?.length) return cache
+  const existing = readLocalFile()
   if (existing?.users?.length) {
+    cache = existing
     const week = weekStart()
     const weeks = existing.publishedWeeks || []
     if (!weeks.includes(week)) {
       existing.publishedWeeks = [...new Set([...weeks, week, ...publishedWeeksForSeed()])]
-      saveDb(existing)
+      await saveDb(existing)
     }
     return existing
   }
   const fresh = await createEmptyDb()
-  saveDb(fresh)
+  await saveDb(fresh)
   return fresh
 }
 
@@ -133,4 +164,4 @@ export function publicUser(user) {
   }
 }
 
-export { createId, emptyCatalog }
+export { createId, emptyCatalog, hasRemoteStore }
