@@ -28,6 +28,7 @@ type Store = AppState & {
   loginUser: (username: string, password: string) => Promise<string | null>
   logout: () => Promise<void>
   deleteAccount: () => Promise<string | null>
+  deleteUser: (id: string) => Promise<string | null>
   addMeal: (meal: Omit<Meal, 'id'>) => Promise<void>
   updateMeal: (meal: Meal) => Promise<void>
   deleteMeal: (id: string) => Promise<void>
@@ -135,6 +136,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return null
   }, [])
 
+  const deleteUser = useCallback(
+    async (id: string) => {
+      try {
+        applyData((await api.deleteUser(id)).data)
+        return null
+      } catch (err) {
+        return err instanceof Error ? err.message : msg('accountDeleteFailed')
+      }
+    },
+    [applyData],
+  )
+
   const addMeal = useCallback(
     async (meal: Omit<Meal, 'id'>) => {
       applyData((await api.addMeal(meal)).data)
@@ -235,11 +248,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   )
 
   const commentsFor = useCallback(
-    (mealId: string) =>
-      state.comments
-        .filter((c) => c.mealId === mealId)
-        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)),
-    [state.comments],
+    (mealId: string) => {
+      const skip = new Set(
+        state.users.filter((u) => u.role === 'admin').map((u) => u.username).concat('admin'),
+      )
+      return state.comments
+        .filter((c) => c.mealId === mealId && !skip.has(c.userName))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    },
+    [state.comments, state.users],
   )
 
   const value = useMemo<Store>(
@@ -251,6 +268,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       loginUser,
       logout,
       deleteAccount,
+      deleteUser,
       addMeal,
       updateMeal,
       deleteMeal,
@@ -275,6 +293,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       loginUser,
       logout,
       deleteAccount,
+      deleteUser,
       addMeal,
       updateMeal,
       deleteMeal,

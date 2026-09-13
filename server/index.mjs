@@ -14,6 +14,7 @@ import {
   loadDb,
   publicData,
   publicUser,
+  purgeUserData,
   saveDb,
 } from './db.mjs'
 import { isoDate, isPastDate, weekStart } from './dates.mjs'
@@ -144,6 +145,14 @@ function requireAdmin(req, res, next) {
   })
 }
 
+function assertNotAdmin(req, res) {
+  if (req.user?.role === 'admin') {
+    res.status(403).json({ error: err(req, 'adminReadOnly') })
+    return false
+  }
+  return true
+}
+
 function normalizeUsername(value) {
   return String(value || '')
     .trim()
@@ -216,38 +225,42 @@ app.post('/api/logout', (_req, res) => {
   res.json({ ok: true })
 })
 
-app.post('/api/delete-account', requireAuth, async (req, res) => {
+function removeAccount(req, res) {
   if (req.user.role === 'admin' || req.user.username === ADMIN_USERNAME) {
     res.status(403).json({ error: err(req, 'adminUndeletable') })
     return
   }
   const db = loadDb()
-  const who = req.user.username
-  db.users = (db.users || []).filter((u) => u.id !== req.user.id)
-  db.ratings = (db.ratings || []).filter((r) => r.userName !== who)
-  db.comments = (db.comments || []).filter((c) => c.userName !== who)
-  db.mealVotes = (db.mealVotes || []).filter((v) => v.userName !== who)
-  db.suggestions = (db.suggestions || []).filter((s) => s.userName !== who)
-  await saveDb(db)
-  res.clearCookie(TOKEN_COOKIE)
-  res.json({ ok: true })
+  purgeUserData(db, req.user)
+  return saveDb(db).then(() => {
+    res.clearCookie(TOKEN_COOKIE)
+    res.json({ ok: true })
+  })
+}
+
+app.post('/api/delete-account', requireAuth, async (req, res) => {
+  await removeAccount(req, res)
 })
 
 app.delete('/api/me', requireAuth, async (req, res) => {
-  if (req.user.role === 'admin' || req.user.username === ADMIN_USERNAME) {
+  await removeAccount(req, res)
+})
+
+app.post('/api/user-delete', requireAdmin, async (req, res) => {
+  const id = String(req.body?.id || '')
+  const db = loadDb()
+  const user = (db.users || []).find((u) => u.id === id)
+  if (!user) {
+    res.status(404).json({ error: err(req, 'userNotFound') })
+    return
+  }
+  if (user.role === 'admin' || user.username === ADMIN_USERNAME) {
     res.status(403).json({ error: err(req, 'adminUndeletable') })
     return
   }
-  const db = loadDb()
-  const who = req.user.username
-  db.users = (db.users || []).filter((u) => u.id !== req.user.id)
-  db.ratings = (db.ratings || []).filter((r) => r.userName !== who)
-  db.comments = (db.comments || []).filter((c) => c.userName !== who)
-  db.mealVotes = (db.mealVotes || []).filter((v) => v.userName !== who)
-  db.suggestions = (db.suggestions || []).filter((s) => s.userName !== who)
+  purgeUserData(db, user)
   await saveDb(db)
-  res.clearCookie(TOKEN_COOKIE)
-  res.json({ ok: true })
+  res.json({ data: catalog(db, req.user) })
 })
 
 app.get('/api/me', requireAuth, async (req, res) => {
@@ -360,6 +373,7 @@ app.delete('/api/meals/:id', requireAdmin, async (req, res) => {
 })
 
 async function applyMealVote(req, res, mealId) {
+  if (!assertNotAdmin(req, res)) return
   const value = req.body?.value
   if (value !== 'like' && value !== 'dislike') {
     res.status(400).json({ error: err(req, 'badVote') })
@@ -391,6 +405,7 @@ app.post('/api/meals/:id/vote', requireAuth, async (req, res) => {
 })
 
 app.post('/api/ratings', requireAuth, async (req, res) => {
+  if (!assertNotAdmin(req, res)) return
   const stars = Number(req.body.stars)
   const mealId = String(req.body.mealId || '')
   if (!mealId || stars < 1 || stars > 5) {
@@ -409,6 +424,7 @@ app.post('/api/ratings', requireAuth, async (req, res) => {
 })
 
 app.post('/api/comments', requireAuth, async (req, res) => {
+  if (!assertNotAdmin(req, res)) return
   const text = String(req.body.text || '').trim()
   const mealId = String(req.body.mealId || '')
   if (!text || !mealId) {
@@ -430,6 +446,7 @@ app.post('/api/comments', requireAuth, async (req, res) => {
 })
 
 app.post('/api/suggestions', requireAuth, async (req, res) => {
+  if (!assertNotAdmin(req, res)) return
   const text = String(req.body.text || '').trim()
   const slot = req.body.slot
   if (!text || !['kahvalti', 'ogle', 'aksam'].includes(slot)) {
@@ -451,6 +468,7 @@ app.post('/api/suggestions', requireAuth, async (req, res) => {
 })
 
 async function applySuggestionVote(req, res, suggestionId) {
+  if (!assertNotAdmin(req, res)) return
   const value = req.body?.value
   if (value !== 'like' && value !== 'dislike') {
     res.status(400).json({ error: err(req, 'badLike') })

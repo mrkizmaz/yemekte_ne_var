@@ -55,12 +55,7 @@ function migrate(db) {
     meal.recipe = meal.recipe || seedMeals[meal.id]?.recipe || ''
     delete meal.calories
   }
-  if (!db.publishedWeeks.length) {
-    db.publishedWeeks = publishedWeeksForSeed()
-  }
-  if (!Array.isArray(db.mealVotes) || db.mealVotes.length === 0) {
-    db.mealVotes = structuredClone(mealVotes)
-  }
+  if (!Array.isArray(db.mealVotes)) db.mealVotes = []
   return db
 }
 
@@ -162,6 +157,34 @@ export function publicUser(user) {
     displayName: user.displayName,
     role: user.role,
   }
+}
+
+function nameKeys(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return []
+  return [raw, raw.toLocaleLowerCase('tr')]
+}
+
+export function purgeUserData(db, user) {
+  const names = new Set([...nameKeys(user.username), ...nameKeys(user.displayName)])
+  const matches = (value) => {
+    const raw = String(value || '').trim()
+    return names.has(raw) || names.has(raw.toLocaleLowerCase('tr'))
+  }
+
+  db.users = (db.users || []).filter((u) => u.id !== user.id)
+  db.ratings = (db.ratings || []).filter((r) => !matches(r.userName))
+  db.comments = (db.comments || []).filter((c) => !matches(c.userName))
+  db.mealVotes = (db.mealVotes || []).filter((v) => !matches(v.userName))
+  db.suggestions = (db.suggestions || [])
+    .filter((s) => !matches(s.userName))
+    .map((s) => {
+      const votes = { ...(s.votes && typeof s.votes === 'object' ? s.votes : {}) }
+      for (const key of Object.keys(votes)) {
+        if (matches(key)) delete votes[key]
+      }
+      return { ...s, votes }
+    })
 }
 
 export { createId, emptyCatalog, hasRemoteStore }

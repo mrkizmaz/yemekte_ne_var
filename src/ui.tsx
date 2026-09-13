@@ -246,14 +246,23 @@ export function Pill({
   label,
   on,
   onPress,
+  fill,
+  compact,
 }: {
   label: string
   on?: boolean
   onPress: () => void
+  fill?: boolean
+  compact?: boolean
 }) {
   return (
-    <Hit onPress={onPress} style={[styles.pill, on && styles.pillOn]}>
-      <Text style={[styles.pillText, on && styles.pillTextOn]}>{label}</Text>
+    <Hit
+      onPress={onPress}
+      style={[styles.pill, fill && styles.pillFill, compact && styles.pillCompact, on && styles.pillOn]}
+    >
+      <Text numberOfLines={1} style={[styles.pillText, compact && styles.pillTextCompact, on && styles.pillTextOn]}>
+        {label}
+      </Text>
     </Hit>
   )
 }
@@ -282,6 +291,8 @@ export const styles = StyleSheet.create({
     marginTop: 4,
     color: colors.muted,
     fontSize: 13,
+    lineHeight: 18,
+    minHeight: 36,
   },
   card: {
     backgroundColor: colors.paper,
@@ -387,11 +398,23 @@ export const styles = StyleSheet.create({
     backgroundColor: '#efc93a',
     borderRadius: 999,
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     minWidth: 72,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#c4ae5a',
+  },
+  pillFill: {
+    flex: 1,
+    minWidth: 0,
+  },
+  pillCompact: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    minWidth: 0,
+  },
+  pillTextCompact: {
+    fontSize: 11,
   },
   pillOn: {
     backgroundColor: '#d9a400',
@@ -411,7 +434,7 @@ export const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 12,
-    marginBottom: 18,
+    marginBottom: 8,
   },
   vote: {
     flexDirection: 'row',
@@ -430,6 +453,9 @@ export const styles = StyleSheet.create({
   },
   voteOnDislike: {
     backgroundColor: '#f3d6d0',
+  },
+  voteOnComment: {
+    backgroundColor: '#efe4d4',
   },
   voteCount: {
     fontWeight: '700',
@@ -460,6 +486,7 @@ export const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.muted,
+    textAlign: 'center',
   },
   navOn: {
     color: colors.accent,

@@ -110,6 +110,11 @@ export const api = {
     return request<{ ok: boolean }>('/api/logout', { method: 'POST' })
   },
   deleteAccount: () => request<{ ok: boolean }>('/api/delete-account', { method: 'POST' }),
+  deleteUser: (id: string) =>
+    request<{ data: Catalog }>('/api/user-delete', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
   addMeal: (meal: object) =>
     request<{ data: Catalog }>('/api/meals', { method: 'POST', body: JSON.stringify(meal) }),
   updateMeal: (meal: Meal) =>

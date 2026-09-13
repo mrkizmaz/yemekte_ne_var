@@ -19,6 +19,7 @@ const errors = {
     suggestionRequired: 'Öğün ve öneri gerekli.',
     badLike: 'Beğeni geçersiz.',
     suggestionNotFound: 'Öneri bulunamadı.',
+    adminReadOnly: 'Yönetici yalnızca görüntüleyebilir.',
     serverError: 'Sunucu hatası.',
   },
   de: {
@@ -41,6 +42,7 @@ const errors = {
     suggestionRequired: 'Mahlzeit und Vorschlag sind erforderlich.',
     badLike: 'Ungültige Bewertung.',
     suggestionNotFound: 'Vorschlag nicht gefunden.',
+    adminReadOnly: 'Administratoren können nur ansehen.',
     serverError: 'Serverfehler.',
   },
 }

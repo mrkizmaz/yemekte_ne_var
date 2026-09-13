@@ -104,33 +104,54 @@ function AppShell() {
     )
   }
 
+  const pinAdminHome = isAdmin && tab === 'bugun' && !mealId
+  const page =
+    mealId && tab === 'admin' && isAdmin ? (
+      <AdminMealInfo mealId={mealId} onBack={() => setMealId(null)} />
+    ) : mealId ? (
+      <MealDetail mealId={mealId} onBack={() => setMealId(null)} />
+    ) : tab === 'bugun' ? (
+      <Home dayView={dayView} setDayView={setDayView} />
+    ) : tab === 'oneriler' ? (
+      <Suggest />
+    ) : tab === 'admin' && isAdmin ? (
+      <AdminPanel onOpen={setMealId} />
+    ) : tab === 'adminOneriler' && isAdmin ? (
+      <AdminSuggestions />
+    ) : (
+      <Profile />
+    )
+
   return (
     <View style={ui.screen}>
       <LanguageSwitcher top={insets.top + 8} right={14} />
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[
-          ui.screenPad,
-          { paddingTop: 16 + insets.top, paddingBottom: mealId ? 24 + insets.bottom : 24 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-      >
-        {mealId && tab === 'admin' && isAdmin ? (
-          <AdminMealInfo mealId={mealId} onBack={() => setMealId(null)} />
-        ) : mealId ? (
-          <MealDetail mealId={mealId} onBack={() => setMealId(null)} />
-        ) : tab === 'bugun' ? (
-          <Home dayView={dayView} setDayView={setDayView} onOpen={setMealId} />
-        ) : tab === 'oneriler' ? (
-          <Suggest />
-        ) : tab === 'admin' && isAdmin ? (
-          <AdminPanel onOpen={setMealId} />
-        ) : tab === 'adminOneriler' && isAdmin ? (
-          <AdminSuggestions />
-        ) : (
-          <Profile />
-        )}
-      </ScrollView>
+      {pinAdminHome ? (
+        <View
+          style={[
+            ui.screenPad,
+            { flex: 1, paddingTop: 10 + insets.top, paddingBottom: 8, overflow: 'hidden' },
+          ]}
+        >
+          {page}
+        </View>
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            ui.screenPad,
+            {
+              paddingTop: 16 + insets.top,
+              paddingBottom: mealId ? 24 + insets.bottom : 24,
+              flexGrow: 1,
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+        >
+          {page}
+        </ScrollView>
+      )}
       {!mealId ? (
         <View style={[ui.nav, { paddingBottom: 8 + insets.bottom }]}>
           {tabs.map((t) => (
@@ -161,7 +182,9 @@ function PressNav({
       label={label}
     >
       <Text style={ui.navIco}>{ico}</Text>
-      <Text style={[ui.navLabel, on && ui.navOn]}>{label}</Text>
+      <Text numberOfLines={1} style={[ui.navLabel, on && ui.navOn]}>
+        {label}
+      </Text>
     </Hit>
   )
 }
